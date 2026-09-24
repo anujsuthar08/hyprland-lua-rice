@@ -4,7 +4,10 @@
 ![Stars](https://img.shields.io/github/stars/anujsuthar08/hyprland-lua-rice)
 ![Last commit](https://img.shields.io/github/last-commit/anujsuthar08/hyprland-lua-rice)
 
-![Desktop overview](.github/screenshots/hero.webp)
+![Picking a wallpaper re-themes the whole desktop live](.github/screenshots/demo.gif)
+
+*Picking a wallpaper re-themes the bar, Control Center and everything else live — matugen
+generates the palette, every open surface picks it up immediately.*
 
 A from-scratch Hyprland desktop: compositor config in **Lua** (not the old
 hyprlang `.conf`), an [AGS](https://github.com/Aylur/ags) v3 / Astal shell
@@ -45,9 +48,9 @@ click highlighter for recordings.
 
 | | |
 |---|---|
-| ![Bar, expanded on hover](.github/screenshots/bar.webp) Bar (expanded on hover) | ![Control Center](.github/screenshots/control-center.webp) Control Center + calendar/weather |
-| ![Launcher](.github/screenshots/launcher.webp) App launcher (rofi, glass theme) | ![Keybind cheat sheet](.github/screenshots/cheatsheet.webp) Live keybind cheat sheet (`SUPER+F1`) |
-| ![Emoji picker with skin tones](.github/screenshots/emoji.webp) Emoji picker, with skin tones | |
+| ![Clean desktop](.github/screenshots/hero.webp) Clean desktop, default wallpaper | ![Bar, expanded on hover](.github/screenshots/bar.webp) Bar (expanded on hover) |
+| ![Control Center](.github/screenshots/control-center.webp) Control Center + calendar/weather | ![Launcher](.github/screenshots/launcher.webp) App launcher (rofi, glass theme) |
+| ![Keybind cheat sheet](.github/screenshots/cheatsheet.webp) Live keybind cheat sheet (`SUPER+F1`) | ![Emoji picker with skin tones](.github/screenshots/emoji.webp) Emoji picker, with skin tones |
 
 ## Requirements
 
