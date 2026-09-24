@@ -60,6 +60,15 @@ optional); the AUR ones are the Astal shell libraries and a few tools. Fonts:
 Optional: `ollama` with at least one model (the **Ask** tab; nothing leaves the machine), `power-profiles-daemon` (power-profile switch), `tesseract tesseract-data-eng`
 (`SUPER+SHIFT+T`: copy text from a screen region; `SUPER+CTRL+T` translates it with your local model), `ydotool` (interaction tests only).
 
+**GPU**: developed and tested on an AMD iGPU (Radeon 680M) — the Wayland session runs on
+`amdgpu` throughout. The dev laptop is a hybrid AMD/NVIDIA machine, but the NVIDIA GPU isn't
+active in this session (no `nvidia-smi`, no NVIDIA PCI device visible to the running kernel —
+likely MUXed off at the BIOS level for battery life), so NVIDIA-specific paths (PRIME offload,
+`nvidia-drm.modeset=1`, driver install) are **untested**. `install.sh` does not auto-detect or
+configure an NVIDIA GPU; if you're on one, get Hyprland's NVIDIA setup working first
+([wiki.hypr.land](https://wiki.hypr.land)), then run `install.sh` as normal — nothing here
+should conflict with that, but it hasn't been verified.
+
 ## Package versions and rollback
 
 The shell runs on `aylurs-gtk-shell-git` and about 19 `libastal*-git` packages: AUR git
@@ -255,3 +264,15 @@ that file writable by `wheel`; run it without `--apply` first to read it, `--rem
 ## More
 
 `docs/` holds the conventions worth knowing before editing: [Hyprland Lua gotchas](docs/hyprland-lua.md) and [the AGS shell](docs/shell.md).
+
+## Credits
+
+Built on top of, and would not exist without:
+
+- [Hyprland](https://hyprland.org) and its own ecosystem tools — `hyprlock`, `hypridle`, `hyprsunset`, `hyprexpose`
+- [AGS](https://github.com/Aylur/ags) / [Astal](https://github.com/Aylur/astal) (Aylur) — the GTK4 shell toolkit the whole bar/dropdown/panel system is built in
+- [rofi](https://github.com/davatorium/rofi) — the launcher
+- [matugen](https://github.com/InioX/matugen) — Material You palette generation from the wallpaper
+- [WhiteSur](https://github.com/vinceliuice/WhiteSur-icon-theme) — the icon theme
+- [Valent](https://valent.andyholmes.ca) — KDE Connect-compatible phone integration
+- [Ollama](https://ollama.com) — the local model behind the **Ask** launcher tab
