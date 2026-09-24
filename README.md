@@ -15,11 +15,26 @@ hyprlang `.conf`), an [AGS](https://github.com/Aylur/ags) v3 / Astal shell
 modes, and wallpaper-driven theming with matugen.
 
 Targets **Hyprland 0.56.x on Arch Linux** (developed on a 1920x1080@144 laptop — see
-**GPU** under Requirements for the hardware this has and hasn't been tested on).
+[GPU](#requirements) for the hardware this has and hasn't been tested on).
 
 > The compositor config is Lua (`hyprland.lua`, `conf/*.lua`). `hyprlock`,
 > `hypridle`, `hyprsunset` and `rofi` are separate apps and keep their own
 > formats — do not "convert" those files.
+
+## Contents
+
+- [What's in it](#whats-in-it)
+- [Screenshots](#screenshots)
+- [Requirements](#requirements)
+- [**Installation**](#installation) — start here
+- [Updating](#updating) · [Package versions and rollback](#package-versions-and-rollback)
+- [Theming other apps](#theming-other-apps)
+- [Everyday use](#everyday-use)
+- [World clocks](#world-clocks) · [Click highlighter](#click-highlighter) ·
+  [Screen tools](#screen-tools) · [Phone](#phone) · [Layouts](#layouts) ·
+  [Battery care](#battery-care)
+- [Editing the config safely](#editing-the-config-safely)
+- [More](#more) · [Credits](#credits)
 
 ## What's in it
 
@@ -32,7 +47,7 @@ Targets **Hyprland 0.56.x on Arch Linux** (developed on a 1920x1080@144 laptop �
 | `scripts/` | launcher modes, screen recording, wallpaper, checks, test helpers |
 | `matugen/` | templates that turn the wallpaper into colours for everything: compositor, shell, rofi, kitty, lock screen, workspace overview, **GTK 3/4 and Qt 5/6 apps** |
 | `hyprlock.conf`, `hypridle.conf`, `hyprsunset.conf` | lock screen, idle daemon, night light |
-| `patches/` | fixes for AUR packages this repo depends on, needed when upstream lags the rest of the system (see Phone below) |
+| `patches/` | fixes for AUR packages this repo depends on, needed when upstream lags the rest of the system (see [Phone](#phone)) |
 | `deploy.sh` | symlinks this repo into `~/.config` (dry run by default) |
 
 Highlights: glass surfaces throughout; Control Center (Wi-Fi, Bluetooth, Night light,
@@ -70,6 +85,100 @@ configure an NVIDIA GPU; if you're on one, get Hyprland's NVIDIA setup working f
 ([wiki.hypr.land](https://wiki.hypr.land)), then run `install.sh` as normal — nothing here
 should conflict with that, but it hasn't been verified.
 
+## Installation
+
+Seven steps, all on Arch Linux. Nothing here touches your system until step 3 —
+steps 1-2 only clone the repo and preview what it would do.
+
+**1. Clone it**
+
+```sh
+git clone https://github.com/anujsuthar08/hyprland-lua-rice.git ~/hyprland-lua-rice
+cd ~/hyprland-lua-rice
+```
+
+**2. Preview what it would do** (safe — changes nothing)
+
+```sh
+./install.sh
+```
+
+Prints every package it would install and every symlink it would create under
+`~/.config`. Read it, then move on.
+
+**3. Apply it**
+
+```sh
+./install.sh --apply
+```
+
+Installs everything in `packages/` (official repos via `pacman`, AUR via `yay`/`paru` —
+bootstrapped automatically if you have neither), then symlinks `~/.config/{hypr,ags,rofi}`
+into this cloned repo. Anything already there is moved to a timestamped backup, never
+deleted. Safe to re-run any time — it skips whatever's already installed or linked.
+
+**4. Log in to Hyprland**
+
+Or, to try it out first without touching your current session, start it nested inside
+your existing desktop: `Hyprland -c ~/hyprland-lua-rice/hyprland.lua`.
+
+**5. Pick a wallpaper**
+
+`SUPER+SHIFT+W` — this is what generates the whole colour theme (bar, rofi, lock screen,
+GTK/Qt apps, everything). Nothing is themed until you do this once.
+
+**6. (Optional) Set your city for the weather chip**
+
+```sh
+scripts/weather-city.py "Your City"
+```
+
+**7. Confirm it's healthy**
+
+```sh
+scripts/smoke-test.sh
+```
+
+One command, checks everything (compositor, keybinds, services, launcher, packages) and
+tells you PASS/WARN/FAIL for each. Safe to run any time afterward too.
+
+<details>
+<summary><strong>Details, flags, and the manual route</strong> (click to expand)</summary>
+
+- Package lists: `packages/official.txt`, `packages/aur.txt`, `packages/optional.txt`
+  (included with `--with-optional`); `packages.lock` pins known-good versions.
+- Flags: `--no-packages` (skip step 3's package install), `--no-deploy` (skip the symlink
+  step), `--with-optional`.
+- Different monitor layout or hardware? Copy `conf/local.example.lua` to `conf/local.lua`
+  (untracked) and edit it.
+- Prefer to install packages yourself and only run the symlink step? Use `./deploy.sh` /
+  `./deploy.sh --apply` directly — it's what `install.sh` calls internally, and it refuses
+  to apply if `scripts/check.sh` finds config errors.
+- `install.sh` also appends `include colors.conf` to `~/.config/kitty/kitty.conf`
+  (idempotent — only if missing, creates the file if it doesn't exist). Using the manual
+  `./deploy.sh` route instead? Add that line yourself: matugen writes
+  `~/.config/kitty/colors.conf`, but nothing includes it automatically outside `install.sh`.
+
+</details>
+
+## Updating
+
+`~/.config/{hypr,ags,rofi}` are symlinks INTO this repo, not copies — so unlike most
+dotfiles setups, `git pull` already *is* the update. No separate upgrade script needed:
+
+```sh
+cd ~/hyprland-lua-rice && git pull
+hyprctl reload                     # picks up .lua changes (usually automatic on save anyway)
+systemctl --user restart hypr-shell  # picks up .tsx/.scss changes — AGS does not hot-reload
+```
+
+If the pull added new lines to `packages/*.txt`, rerun `./install.sh --apply` to install
+them (it skips everything already installed, so this is always safe to rerun).
+
+The generated colour files (`conf/colors.lua`, `rofi/colors.rasi`,
+`hyprlock-colors.conf`, `ags/style/_colors.scss`) are **tracked on purpose**: rofi,
+hyprlock and AGS import them, and a fresh clone has no matugen output yet.
+
 ## Package versions and rollback
 
 The shell runs on `aylurs-gtk-shell-git` and about 19 `libastal*-git` packages: AUR git
@@ -94,52 +203,6 @@ systemctl --user restart hypr-shell
 After a successful update that you have confirmed works, refresh the lock and the backup
 (`scripts/pkg-versions.sh`, then `--backup`) and commit `packages.lock`. To stop a package
 updating at all, add it to `IgnorePkg` in `/etc/pacman.conf`.
-
-## Install / restore on a fresh machine
-
-```sh
-git clone https://github.com/anujsuthar08/hyprland-lua-rice.git ~/hyprland-lua-rice
-cd ~/hyprland-lua-rice
-./install.sh            # DRY RUN: shows every package and link it would touch
-./install.sh --apply    # installs packages/*.txt (pacman + yay/paru), then links ~/.config/{hypr,ags,rofi}
-```
-
-The package lists are `packages/official.txt`, `packages/aur.txt` and
-`packages/optional.txt` (add `--with-optional`); `packages.lock` pins known-good versions.
-`install.sh` is idempotent, never deletes anything, and deploy moves old config dirs to a
-timestamped backup. Flags: `--no-packages`, `--no-deploy`. For a different monitor or GPU,
-copy `conf/local.example.lua` to `conf/local.lua` (untracked) and edit it. The manual route
-is `./deploy.sh` / `./deploy.sh --apply` after installing the packages yourself.
-
-`deploy.sh` refuses to apply if `scripts/check.sh` reports errors. Then:
-
-1. Put wallpapers in `~/.config/wallpapers/` and pick one with `SUPER+SHIFT+W`; this runs matugen and themes everything.
-2. Weather (optional): `scripts/weather-city.py "<your city>"`.
-3. Log in to Hyprland. Autostart links and starts `hypr-shell` and `hypridle`.
-
-`install.sh` also appends `include colors.conf` to `~/.config/kitty/kitty.conf` for you
-(idempotent — checked first, only appended if missing, and a `kitty.conf` that doesn't
-exist yet gets created with just that line). Using the manual `./deploy.sh` route instead
-of `install.sh`? Add it yourself: matugen writes `~/.config/kitty/colors.conf`, but kitty.conf
-isn't symlinked from this repo, so nothing includes it automatically outside `install.sh`.
-
-## Updating
-
-`~/.config/{hypr,ags,rofi}` are symlinks INTO this repo, not copies — so unlike most
-dotfiles setups, `git pull` already *is* the update. No separate upgrade script needed:
-
-```sh
-cd ~/hyprland-lua-rice && git pull
-hyprctl reload                     # picks up .lua changes (usually automatic on save anyway)
-systemctl --user restart hypr-shell  # picks up .tsx/.scss changes — AGS does not hot-reload
-```
-
-If the pull added new lines to `packages/*.txt`, rerun `./install.sh --apply` to install
-them (it skips everything already installed, so this is always safe to rerun).
-
-The generated colour files (`conf/colors.lua`, `rofi/colors.rasi`,
-`hyprlock-colors.conf`, `ags/style/_colors.scss`) are **tracked on purpose**: rofi,
-hyprlock and AGS import them, and a fresh clone has no matugen output yet.
 
 ## Theming other apps
 
@@ -246,7 +309,7 @@ that file writable by `wheel`; run it without `--apply` first to read it, `--rem
 - **`scripts/smoke-test.sh`** is the one-command health check (compositor, binds, options,
   services, launcher modes, packages, logs, repo state). Safe to run any time: it sends no
   input and changes nothing. `--full` also runs the nested-instance config check.
-- After a system update run `scripts/pkg-versions.sh --check` (see above).
+- After a system update run `scripts/pkg-versions.sh --check` (see [Package versions and rollback](#package-versions-and-rollback)).
 - After any change run `scripts/check.sh` (Lua errors, `hyprctl configerrors`, duplicate
   and undescribed binds — all must be "none") and `scripts/audit-options.py` (every
   `hl.config` option exists and matches the live value).
