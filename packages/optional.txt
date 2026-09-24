@@ -1,0 +1,17 @@
+# Optional official packages: each enables one feature. install.sh skips these
+# unless run with --with-optional.
+power-profiles-daemon   # power-profile switch in Control Center
+tesseract               # SUPER+SHIFT+T copy text from screen, SUPER+CTRL+T translate it
+tesseract-data-eng      # ... English language data
+ydotool                 # only for the interaction tests (scripts/uitest.sh)
+ollama                  # the Ask tab (SUPER+SHIFT+A): a local model; then `ollama pull qwen2.5-coder:3b` or any model you like
+zbar                    # SUPER+ALT+Q: read a QR code on screen
+tesseract-data-guj      # ... Gujarati OCR
+tesseract-data-hin      # ... Hindi OCR
+python-evdev            # SUPER+SHIFT+H: cursor click highlighter (scripts/click-highlight.py), for recordings
+# valent-git (AUR): phone integration (Control Center panel) — notifications,
+# clipboard, find-my-phone, media control, file share. GTK4/libadwaita-native
+# implementation of the KDE Connect protocol (still pairs with the official
+# Android/iOS app), chosen over the official `kdeconnect` package because that
+# one pulls in ~34 packages of KDE Frameworks 6 + Qt6 Multimedia on an
+# otherwise pure-GTK system. install: yay -S valent-git

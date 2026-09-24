@@ -1,0 +1,63 @@
+# Required packages from the official Arch repos (one per line, # comments).
+# Read by install.sh and scripts/pkg-versions.sh — this is the single list.
+
+# compositor + the Hypr* tools the config drives
+hyprland
+hyprlock
+hypridle
+hyprsunset
+hyprpicker
+hyprpolkitagent
+xdg-desktop-portal-hyprland
+awww
+
+# launcher, theming, terminal, files
+rofi
+matugen
+dart-sass
+kitty
+thunar
+gvfs
+pavucontrol
+nm-connection-editor
+blueman
+
+# capture, clipboard
+grim
+slurp
+wf-recorder
+swappy
+cliphist
+wl-clipboard
+wl-clip-persist
+imagemagick
+
+# audio, media, hardware
+pipewire
+pipewire-pulse
+wireplumber
+playerctl
+brightnessctl
+networkmanager
+bluez-utils
+upower
+
+# runtime for scripts and the shell
+jq
+curl
+python
+python-gobject
+python-pillow
+lua54
+libnotify
+gtk3
+gtk4
+
+# GTK / Qt app theming (see README "Theming other apps")
+qt5ct
+qt6ct
+
+# fonts
+ttf-jetbrains-mono-nerd
+adwaita-fonts
+noto-fonts-emoji

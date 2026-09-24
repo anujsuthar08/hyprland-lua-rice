@@ -1,0 +1,7 @@
+# Required AUR packages (built with yay or paru by install.sh).
+# The shell is a rolling git snapshot: see README "Package versions and rollback".
+aylurs-gtk-shell-git    # the `ags` CLI
+libastal-meta           # pulls in the Astal libraries
+grimblast-git
+hyprexpose-git
+whitesur-icon-theme

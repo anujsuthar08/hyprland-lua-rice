@@ -1,0 +1,24 @@
+/* rofi 2.0 (native wayland — the old rofi-wayland fork is obsolete) */
+configuration {
+    modes:                       "drun,run,window,filebrowser,calc:~/.config/hypr/scripts/rofi-calc.sh,clip:~/.config/hypr/scripts/rofi-clip.sh,emoji:~/.config/hypr/scripts/rofi-emoji.py,note:~/.config/hypr/scripts/rofi-note.py,timer:~/.config/hypr/scripts/rofi-timer.py,shots:~/.config/hypr/scripts/rofi-shots.py,ask:~/.config/hypr/scripts/rofi-ask.py";
+    font:                        "JetBrainsMono Nerd Font 11";
+    show-icons:                  true;
+    icon-theme:                  "WhiteSur-dark";
+    drun-display-format:         "{name}";
+    display-drun:                "Apps";
+    display-run:                 "Run";
+    display-window:              "Windows";
+    display-filebrowser:         "Files";
+    display-calc:                "Calc";
+    display-clip:                "Clip";
+    display-emoji:               "Emoji";
+    display-note:                "Note";
+    display-timer:               "Timer";
+    display-shots:               "Shots";
+    display-ask:                 "Ask";
+    hover-select:                true;
+    me-select-entry:             "";
+    me-accept-entry:             "MousePrimary";
+}
+
+@theme "theme"

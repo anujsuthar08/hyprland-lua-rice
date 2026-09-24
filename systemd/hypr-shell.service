@@ -1,0 +1,20 @@
+[Unit]
+Description=Hyprland shell (AGS: bar, dropdowns, notifications, OSD, control center)
+# NOT tied to graphical-session.target: it is inactive in this session (Hyprland
+# is not started through uwsm), so conf/autostart.lua starts this unit itself.
+# A crash-looping shell (say, a broken edit) must not spin forever: after 5
+# failed starts within a minute systemd gives up and leaves it stopped.
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+# `exec` (not `simple`): the start job succeeds only once ags really launched.
+Type=exec
+ExecStart=/usr/bin/ags run -d %h/.config/hypr/ags
+# on-failure = crash, SIGSEGV/SIGKILL, non-zero exit. A CLEAN exit does NOT
+# restart, so `ags quit -i shell` still stays quit.
+Restart=on-failure
+RestartSec=2
+Slice=session.slice
+# The stop signal has to reach the whole gjs process tree.
+KillMode=control-group

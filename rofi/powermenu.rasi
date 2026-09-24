@@ -1,0 +1,52 @@
+@import "colors"
+
+* {
+    background-color: transparent;
+    text-color:       @fg;
+}
+
+window {
+    width:            360px;
+    border-radius:    16px;
+    background-color: @bg;
+    padding:          16px;
+}
+
+mainbox {
+    children: [ message, listview ];
+    spacing:  12px;
+}
+
+message {
+    background-color: @bg-alt;
+    border-radius:    12px;
+    padding:          10px;
+}
+
+textbox {
+    horizontal-align: 0.5;
+}
+
+listview {
+    lines:     5;
+    columns:   1;
+    scrollbar: false;
+    spacing:   6px;
+}
+
+element {
+    border-radius: 10px;
+    padding:       10px 14px;
+    spacing:       12px;
+    cursor:        pointer;
+}
+
+element selected {
+    background-color: @bg-selected;
+    text-color:       @fg-selected;
+}
+
+element-text {
+    vertical-align: 0.5;
+    text-color:     inherit;
+}

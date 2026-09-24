@@ -1,0 +1,13 @@
+# Personal / machine-local — never committed
+/wallpapers
+conf/local.lua
+conf/local_late.lua
+
+# Editor and tool leftovers
+*.bak
+*.bak[0-9]*
+*.tmp
+.check-*.lua
+.locktest-*.lua
+__pycache__/
+*.pyc

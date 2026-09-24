@@ -1,0 +1,18 @@
+diff --git a/src/plugins/xdp/valent-ei-input.c b/src/plugins/xdp/valent-ei-input.c
+index 1f8e6bb9..18c163c6 100644
+--- a/src/plugins/xdp/valent-ei-input.c
++++ b/src/plugins/xdp/valent-ei-input.c
+@@ -412,6 +412,13 @@ ei_source_dispatch (GSource     *source,
+         case EI_EVENT_TOUCH_DOWN:
+         case EI_EVENT_TOUCH_UP:
+         case EI_EVENT_TOUCH_MOTION:
++        /* Added to the installed libei after this switch was written
++         * (-Wswitch-enum requires every enumerator named even with a
++         * default: case) — text-input events, not relevant to this
++         * plugin's pointer/keyboard/touch emulation, same no-op as the
++         * rest of this block. */
++        case EI_EVENT_TEXT_KEYSYM:
++        case EI_EVENT_TEXT_UTF8:
+         default:
+           break;
+         }

@@ -1,0 +1,131 @@
+@use "colors" as *;
+
+// A UI face for UI, not a terminal face for UI. The whole shell used
+// to render in JetBrainsMono, and a monospaced clock with monospaced
+// device names is the loudest "this is a rice screenshot" tell there
+// is — the letterfit is wrong for short labels and the digits sit in
+// oversized boxes. Adwaita Sans ships with GNOME and is already on the
+// system; the nerd font stays second in the list purely so Pango can
+// fall back to it for the icon glyphs, which Adwaita Sans has no
+// codepoints for.
+* {
+  font-family: "Adwaita Sans", "JetBrainsMono Nerd Font", sans-serif;
+  font-size: 13px;
+}
+
+// ─────────────────────────── Curves ───────────────────────────
+//
+// Everything animated in this shell shares these two, which is the
+// reason two unrelated transitions still look like one system. Fast
+// out of the gate, settled at the end.
+//
+// Declared here rather than beside the @keyframes in main.scss because
+// Sass resolves variables in SOURCE ORDER: the bar section uses them
+// well before the motion section would have defined them.
+$ease:      cubic-bezier(0.2, 0, 0, 1);
+$ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+
+@mixin card($radius: 12px) {
+  background-color: $bg-container;
+  border-radius: $radius;
+}
+
+@mixin pill {
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+
+@mixin hover {
+  transition: background-color 150ms ease, color 150ms ease;
+  &:hover { background-color: $bg-container-hi; }
+}
+
+// ─────────────────────────── Glass ───────────────────────────
+//
+// GTK4 has NO backdrop-filter. The actual blur is the compositor's —
+// `hl.layer_rule({ blur = true })` in conf/rules.lua, tuned in
+// conf/looks.lua. CSS only decides how much of it survives: the tint
+// sitting on top, the rim light around the edge, and the falloff.
+//
+// The whole trick is alpha discipline. The first bar painted the
+// capsule at 0.85 and then wondered why the blur was invisible —
+// above roughly 0.6 there is nothing left to see and you have simply
+// drawn a dark pill. These sit in the 0.35–0.5 band, where the
+// wallpaper still reads through as colour and movement but text on
+// top stays legible.
+$glass-tint:      rgba($bg, 0.42);
+$glass-tint-deep: rgba($bg, 0.55); // panels holding a lot of text
+
+// A rim light, not a border — and an INSET ring rather than a real
+// `border`, for a specific reason: a border adds to the layout box, and
+// this capsule's width is spring-animated from Bar.tsx. A 1px border
+// makes every frame of that animation 2px wider than the physics
+// think it is. `inset 0 0 0 1px` paints the same hairline with zero
+// layout cost. (Idiom from Aylur's marble-shell, who wrote AGS.)
+//
+// It also sidesteps a trap: a translucent `border` needs
+// `background-clip: padding-box`, or the fill paints *under* the
+// border and the rim double-darkens.
+//
+// Three rings, because light has a direction: bright along the top
+// edge, nearly nothing along the bottom, a faint ring holding the
+// perimeter together. A single even outline reads as a drawn box; this
+// reads as a pane catching light from above.
+$glass-rim:     rgba(255, 255, 255, 0.05);
+$glass-rim-top: rgba(255, 255, 255, 0.10);
+$glass-rim-bot: rgba(255, 255, 255, 0.04);
+
+// Vertical falloff. Keep it nearly invisible — a few percent, and gone
+// by 42%. A strong gradient here is the single clearest tell of the
+// 2014 frosted-glass look.
+$glass-sheen-top: rgba(255, 255, 255, 0.06);
+$glass-sheen-bot: rgba(255, 255, 255, 0);
+
+// Fills for things sitting ON the glass. They have to be white-alpha,
+// not $bg-container — an opaque chip inside a translucent pill punches
+// a hole straight through the effect.
+$glass-fill:    rgba(255, 255, 255, 0.08);
+$glass-fill-hi: rgba(255, 255, 255, 0.14);
+
+// The shadow is deliberately tiny. A 20px soft halo is the old look;
+// current practice is a hairline contact shadow — one tight pair, low
+// alpha. Keep the shadow COUNT identical across every state a glass
+// surface can be in: GTK4 only interpolates box-shadow lists that
+// match in length and inset-ness, so a state with fewer shadows snaps
+// instead of tweening.
+// The bar-dropdown recipe as a mixin, for surfaces that are blurred by a
+// layer rule with `ignore_alpha` (notification popups, OSD): surface @
+// 0.66 (the legibility floor for small text, see main.scss `.Dropdown`),
+// a faint top sheen, a light rim, and NO outer shadow — every pixel above
+// the alpha threshold is replaced by blurred wallpaper, so a drop shadow
+// would render as a bright halo.
+@mixin dropdown-glass($radius: 16px) {
+  background-color: rgba($bg, 0.66);
+  background-image: linear-gradient(to bottom, $glass-sheen-top, $glass-sheen-bot);
+  border-radius: $radius;
+  box-shadow:
+    inset 0  1px 0 0   rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 0   rgba(255, 255, 255, 0.05),
+    inset 0  0   0 1px rgba(255, 255, 255, 0.08);
+}
+
+@mixin glass($radius: 14px, $tint: $glass-tint) {
+  background-color: $tint;
+  background-image: linear-gradient(to bottom, $glass-sheen-top, $glass-sheen-bot);
+  border-radius: $radius;
+  box-shadow:
+    inset 0  1px 0 0 $glass-rim-top,
+    inset 0 -1px 0 0 $glass-rim-bot,
+    inset 0  0   0 1px $glass-rim,
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    0 1px 3px rgba(0, 0, 0, 0.24);
+
+  // No-op on GTK 4.22.4 (the backdrop is only what GTK itself painted
+  // into this surface, which is nothing). Parses clean — verified
+  // against this GTK's own CSS parser. GTK 4.23.3 forwards it to
+  // ext-background-effect-v1, which Hyprland 0.56.2 already implements
+  // compositor-side, so when Arch ships 4.24 this line starts doing
+  // real region-exact blur and the layer_rule/ignore_alpha dance in
+  // conf/rules.lua can be deleted. Radius must be >= 20 to be promoted.
+  backdrop-filter: blur(24px);
+}

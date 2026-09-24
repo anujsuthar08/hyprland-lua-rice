@@ -1,0 +1,1630 @@
+@use "colors" as *;
+@use "base" as *;
+
+// GTK recolours a "symbolic" SVG itself, before any CSS `color` gets a
+// look-in, using four fixed named colours: the base fill plus
+// `success_color` / `warning_color` / `error_color` for any path the
+// icon itself marks with those classes. WhiteSur-dark's battery icons
+// use exactly this to paint the charge level — a bright orange
+// (#ff7f2a) at low-while-charging, saturated red at critical. That is
+// a second, unrelated accent colour arguing with $primary everywhere
+// else on the bar, which is what actually read as "messy": not
+// misalignment, a second palette. Remapping the three named colours to
+// this shell's own tokens keeps the same signal (battery low still
+// reads as low) in the same voice as everything around it.
+@define-color success_color #{$tertiary};
+@define-color warning_color #{$secondary};
+@define-color error_color   #{$error};
+
+// ─────────────────────────── Bar ───────────────────────────
+//
+// A centred TAB hanging off the top edge: as wide as its contents,
+// flush to the top, rounded only at the two bottom corners. See
+// widget/Bar.tsx — it is welded to the edge rather than floating
+// below it, which is the whole difference between this and the capsule
+// it replaced.
+//
+// Nothing here animates height, and nothing here is allowed to. Hover
+// reveals detail in place, animated by GtkRevealer on the individual
+// pieces.
+
+// Only the bottom corners. The screen supplies the top edge; the tab
+// only has to finish the three sides that hang below it.
+$tab-radius:     0 0 16px 16px;
+$glyph-radius:   8px;
+
+// Content height. The window is this plus the strip's padding, and the
+// total is what gets reserved — see BAR_HEIGHT in Bar.tsx.
+$row-height:     26px;
+
+// Still referenced by the wallpaper switcher / control centre further
+// down, which keep the chip vocabulary.
+$chip-radius:    10px;
+
+window.Bar {
+  background-color: transparent;
+  color: $fg;
+}
+
+.tab {
+  background-color: rgba($bg, 0.38);
+  // The sheen: a few percent of white falling off by 40%. Keep it
+  // nearly invisible — a strong gradient here is the single clearest
+  // tell of the 2014 frosted-glass look.
+  background-image: linear-gradient(to bottom, $glass-sheen-top, $glass-sheen-bot);
+
+  // Every label on the bar sits on a translucent surface with a
+  // wallpaper moving under it, so each one carries its own contact
+  // shadow. One pixel, high transparency: invisible as an effect,
+  // decisive on legibility — this is what stops light text over a pale
+  // photograph reading as fuzzy. The previous rice did the same thing
+  // (`text-shadow: 0 0 5px $background` on window titles), just
+  // heavier.
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  border-radius: $tab-radius;
+  min-height: $row-height;
+  padding: 5px 14px 5px 12px;
+  font-size: 13px;
+
+  // A hairline around the three sides that exist, and a brighter one
+  // along the bottom edge where the tab ends. NO drop shadow: this
+  // namespace is blurred with `xray` and `ignore_alpha = 0.1` (see
+  // conf/rules.lua), which turns any shadow above 10% alpha into a
+  // bright halo of blurred wallpaper instead of a shadow.
+  //
+  // Keep the shadow COUNT identical across states — GTK4 only
+  // interpolates box-shadow lists that match in length and
+  // inset-ness, so a state with fewer shadows snaps instead of
+  // tweening.
+  box-shadow:
+    inset 0  0   0 1px rgba(255, 255, 255, 0.06),
+    inset 0 -1px 0 0   rgba(255, 255, 255, 0.09);
+
+  transition:
+    background-color 240ms $ease,
+    border-radius    240ms $ease,
+    box-shadow       240ms $ease;
+
+  // The bar arrives rather than blinking into place. Fires once, when
+  // the shell starts — the widget is never rebuilt after that.
+  animation: drop-in 420ms $ease;
+}
+
+// Hovered, or holding a dropdown open. The surface firms up as it
+// widens so the expansion has a cause and not just an effect — the
+// tab looks picked up, rather than merely longer.
+.tab.open {
+  background-color: rgba($bg, 0.54);
+
+  // The corners open up as the tab widens. Radius costs nothing in
+  // layout — unlike padding, which would reflow every frame against
+  // the revealers — so it is free motion, and it is what stops the
+  // expansion reading as a text field growing.
+  border-radius: 0 0 21px 21px;
+
+  box-shadow:
+    inset 0  0   0 1px rgba(255, 255, 255, 0.11),
+    inset 0 -1px 0 0   rgba(255, 255, 255, 0.16);
+}
+
+// ─────────────────────────── Motion ───────────────────────────
+//
+// GTK4 supports @keyframes and transitions on real CSS properties
+// (colour, background, border-radius, min-width, opacity, margin,
+// box-shadow). It does NOT support `transform`, so nothing here can
+// scale or translate a widget — the illusion of movement has to come
+// from properties that do animate. `min-width` is the workhorse.
+//
+// One rule throughout: motion marks a CHANGE OF STATE, never idle
+// decoration. Nothing on this bar moves unless something happened.
+
+// The shared curves live in _base.scss — Sass resolves variables in
+// source order, and the bar section above this one already uses them.
+
+// A workspace you just switched to. It overshoots the accent and
+// settles — a beat of attention on the one thing that changed, over in
+// a third of a second.
+@keyframes become-active {
+  0%   { background-color: rgba($primary, 0.05); }
+  55%  { background-color: rgba($primary, 0.34); }
+  100% { background-color: rgba($primary, 0.15); }
+}
+
+// The dot version: same beat, on the shape that has no room to grow.
+@keyframes dot-active {
+  0%   { background-color: rgba($primary, 0.3); }
+  55%  { background-color: rgba($primary, 1); }
+  100% { background-color: rgba($primary, 0.8); }
+}
+
+// A new notification. The bell's badge swells once and settles, which
+// is what makes it different from a number that was simply always
+// there. Fires on the badge, not the whole glyph — a bar that jumps
+// when mail arrives is a bar you turn off.
+@keyframes badge-in {
+  0%   { opacity: 0; padding-left: 0;   padding-right: 0; }
+  65%  { opacity: 1; padding-left: 7px; padding-right: 7px; }
+  100% { opacity: 1; padding-left: 5px; padding-right: 5px; }
+}
+
+// The clock ticking over a minute — a beat of the accent colour that
+// decays back to $fg, rather than a silent swap of digits.
+@keyframes clock-tick {
+  0%   { color: $primary; }
+  100% { color: $fg; }
+}
+
+// Panels and popups arrive: down and in, never a bare appear.
+@keyframes drop-in {
+  0%   { opacity: 0; margin-top: -6px; }
+  100% { opacity: 1; margin-top: 0; }
+}
+
+// The OSD comes up off the bottom edge it is anchored to.
+@keyframes rise-in {
+  0%   { opacity: 0; margin-bottom: -10px; }
+  100% { opacity: 1; margin-bottom: 0; }
+}
+
+// A ring expanding outward from a real click, fading as it grows — the
+// click already happened before this plays (ClickHighlight.tsx only
+// OBSERVES input via evdev, never consumes it), so this is pure
+// celebration, never a delay.
+@keyframes click-ripple {
+  0%   { opacity: 0.9; transform: scale(0.3); }
+  100% { opacity: 0;   transform: scale(1.6); }
+}
+
+@keyframes track-in {
+  0%   { opacity: 0; margin-top: 8px; }
+  100% { opacity: 1; margin-top: 0; }
+}
+
+@keyframes cover-in {
+  0%   { opacity: 0; margin-top: 10px; margin-bottom: -10px; }
+  100% { opacity: 1; margin-top: 0;    margin-bottom: 0; }
+}
+
+@keyframes glyph-in {
+  0%   { opacity: 0; margin-top: 8px; }
+  100% { opacity: 1; margin-top: 0; }
+}
+
+@keyframes value-in {
+  0%   { opacity: 0; margin-left: 14px; }
+  100% { opacity: 1; margin-left: 6px; }
+}
+
+@keyframes nudge-next {
+  0%   { opacity: 1; margin-left: 0; }
+  40%  { opacity: 0; margin-left: 16px; }
+  41%  { opacity: 0; margin-left: -16px; }
+  100% { opacity: 1; margin-left: 0; }
+}
+
+@keyframes nudge-prev {
+  0%   { opacity: 1; margin-right: 0; }
+  40%  { opacity: 0; margin-right: 16px; }
+  41%  { opacity: 0; margin-right: -16px; }
+  100% { opacity: 1; margin-right: 0; }
+}
+
+@keyframes slide-in-right {
+  0%   { opacity: 0; margin-left: 40px; margin-right: -40px; }
+  100% { opacity: 1; margin-left: 0;    margin-right: 0; }
+}
+
+// ── the workspace rail ──
+//
+// Rooms and dots. A workspace holding windows is a room showing their
+// app icons; an empty one is a dot. See WorkspaceRail.tsx.
+.WorkspaceRail {
+  // Air between the rail and the status cluster. The groups are told
+  // apart by space alone — a hairline rule at this density reads as a
+  // table border, which is the cheapest way to make a bar look drawn
+  // rather than designed.
+  margin-right: 8px;
+
+  .ws {
+    all: unset;
+    margin-right: 5px;
+    padding: 1px 5px;
+    border-radius: 7px;
+    background-color: rgba($fg, 0.07);
+
+    // The rail keeps its widgets across updates (see
+    // WorkspaceRail.tsx), so these fire on the state change itself
+    // rather than on every rebuild.
+    transition:
+      background-color 200ms $ease,
+      box-shadow       200ms $ease,
+      border-radius    200ms $ease;
+
+    // App icons are full-colour, and four workspaces of full-colour
+    // icons is a toybox. Everything but the current workspace is held
+    // back so the eye lands on where you actually are.
+    image { opacity: 0.55; }
+
+    &:hover {
+      background-color: rgba($fg, 0.13);
+      image { opacity: 0.8; }
+    }
+
+    // The only accent on the bar at rest. One coloured thing on a
+    // surface reads as intent; four read as decoration.
+    &.active {
+      background-color: rgba($primary, 0.15);
+      box-shadow: inset 0 0 0 1px rgba($primary, 0.4);
+      border-radius: 9px;
+      image { opacity: 1; }
+
+      animation: become-active 320ms $ease;
+    }
+
+    .overflow {
+      color: $fg-variant;
+      font-size: 0.75em;
+      margin-left: 2px;
+    }
+  }
+
+  // An empty workspace: no room, no label, no box. Just a mark saying
+  // there is somewhere to go. The button is only the hit area — 6px of
+  // dot is nothing to aim at — and `.mark` is the visible part.
+  .dot {
+    all: unset;
+    padding: 0 3px;
+    margin-right: 2px;
+
+    .mark {
+      min-width: 6px;
+      min-height: 6px;
+      border-radius: 999px;
+      background-color: rgba($fg, 0.2);
+
+      // min-width is the one geometric property GTK4 will tween, so
+      // the dot→bar stretch is a real animation rather than a swap.
+      transition:
+        background-color 200ms $ease,
+        min-width        260ms $ease;
+    }
+
+    &:hover .mark  { background-color: rgba($fg, 0.45); min-width: 9px; }
+
+    // The current workspace, standing empty: still the one you are in,
+    // so it stretches into a bar rather than colouring a dot.
+    &.active .mark {
+      min-width: 16px;
+      background-color: rgba($primary, 0.8);
+      animation: dot-active 320ms $ease;
+    }
+  }
+
+  // A window is being dragged over this pip — see WorkspacePreview.tsx
+  // for the drag source, WorkspaceRail.tsx for the drop target.
+  // `:drop(active)` is GTK4's own pseudo-class for "a compatible drag
+  // is over me right now"; no JS-driven class needed.
+  .ws:drop(active), .dot:drop(active) {
+    background-color: rgba($primary, 0.28);
+    box-shadow: inset 0 0 0 1px rgba($primary, 0.6);
+  }
+
+  .dot:drop(active) .mark {
+    background-color: rgba($primary, 0.9);
+    min-width: 9px;
+  }
+
+  // Which half of the pip a drag is over — WorkspaceRail.tsx's
+  // `motion` handler on the drop target sets these (GTK CSS has no
+  // pseudo-class for pointer position within a widget, unlike
+  // `:drop(active)` above). A one-sided inset bar reads as "it goes
+  // here" without needing the pip to visibly split in two, which at
+  // pip width would leave almost nothing to read.
+  .split-left {
+    box-shadow: inset 3px 0 0 0 rgba($primary, 0.9);
+  }
+  .split-right {
+    box-shadow: inset -3px 0 0 0 rgba($primary, 0.9);
+  }
+
+  // The scratchpad pip (WorkspaceRail.tsx's fixed `specialBtn`) — a
+  // drawer, not another numbered destination. The gap says "this is a
+  // different kind of thing" without another icon to source; empty, it
+  // gets a hollow ring instead of `.dot`'s filled one, since "nothing
+  // stashed" reads differently from "this workspace doesn't exist yet".
+  .special {
+    margin-left: 6px;
+  }
+
+  .dot.special .mark {
+    background-color: transparent;
+    box-shadow: inset 0 0 0 1.5px rgba($fg, 0.3);
+  }
+
+  .dot.special:hover .mark {
+    box-shadow: inset 0 0 0 1.5px rgba($fg, 0.55);
+  }
+
+  .dot.special.active .mark {
+    background-color: rgba($primary, 0.25);
+    box-shadow: inset 0 0 0 1.5px rgba($primary, 0.9);
+  }
+}
+
+.FocusedWindow label {
+  // Context, not content: a full step below everything else — in
+  // colour AND in size — so it never competes with the rail beside it
+  // or the clock past it.
+  color: rgba($fg, 0.75);
+  font-size: 12.5px;
+  margin-left: 2px;
+  margin-right: 16px;
+}
+
+// ── status glyphs ──
+//
+// Every glyph is a plain button — the dropdowns are a separate layer
+// window (see widget/bar/dropdown.ts), so there is no GtkMenuButton
+// wrapper node to style around and no :checked state to borrow.
+// `.open` is set by the widget for the one whose dropdown is up.
+.glyph {
+  all: unset;
+  border-radius: $glyph-radius;
+  padding: 4px 10px;
+  min-height: 18px;
+  transition:
+    background-color 200ms $ease-soft,
+    color            200ms $ease-soft,
+    box-shadow       200ms $ease-soft;
+
+  // Zero-alpha placeholder so the hover state's shadow TWEENS in
+  // rather than snapping — see the `.tab`/`.tab.open` comment above on
+  // why the shadow list has to match in count across states.
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0);
+
+  // The icons are 18px symbolic SVGs now, not glyphs (see
+  // bar/icons.ts). GTK recolours a symbolic icon with the widget's
+  // `color`, so they still follow the palette — and because they are
+  // images in a box rather than characters on a baseline, they line up
+  // with the text beside them without any nudging. Sized up from 16 and
+  // given more ink (0.72 -> 0.82) — restrained still means one accent
+  // colour, not that the icons themselves have to look washed out.
+  .icon {
+    color: rgba($fg, 0.82);
+    -gtk-icon-size: 20px;
+    transition: color 200ms $ease-soft;
+  }
+
+  // A hairline of light along the top on hover, on top of the fill —
+  // the difference between "this rectangle got darker" and "this
+  // button caught light", for a cost of one CSS property.
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.14);
+    .icon { color: $fg; }
+  }
+
+  // Pressed. The button has nowhere to move — GTK4 has no transform —
+  // so the press is carried by the fill going the other way, darker
+  // instead of lighter, which reads as "pushed in".
+  &:active {
+    background-color: rgba(0, 0, 0, 0.18);
+    transition: background-color 60ms linear;
+  }
+
+  &.open {
+    background-color: rgba($primary, 0.16);
+    .icon { color: $primary; }
+  }
+}
+
+// The gap before AND after a revealed value lives INSIDE the revealer
+// (both margins on the label itself, not spacing on a parent box). As
+// box spacing either one would still be applied to a zero-width
+// collapsed child, leaving a stray gap beside every glyph at rest —
+// margins on the revealed child collapse to nothing along with it.
+// The trailing margin is what keeps an expanded value from butting
+// straight into the next glyph's icon when several are open at once.
+// Keyboard focus ring — visible on the bar's buttons and the panels'
+// controls when reached by Tab, never on plain mouse clicks.
+.glyph:focus-visible,
+.Clock:focus-visible,
+.Battery:focus-visible,
+.row:focus-visible,
+.transport .glyph:focus-visible {
+  box-shadow: inset 0 0 0 2px $primary;
+}
+
+.glyph .value.swap { animation: value-in 300ms $ease; }
+
+.glyph .value {
+  color: rgba($fg, 0.85);
+  margin-left: 6px;
+  margin-right: 6px;
+  font-feature-settings: "tnum";
+}
+
+.Clock {
+  all: unset;
+  // GTK4 clips a widget's content to its own rounded border-box
+  // (border-radius forces a clip node), and the box's *natural* height
+  // for the row of baseline-aligned labels (Clock.tsx) is measured off
+  // the digits, which have no descender — the meridiem's "p" in "pm"
+  // then overflows that box and gets clipped flat, right on the
+  // border-radius edge. It is THIS button's own bounds, not
+  // $row-height on .tab: bumping $row-height (which only grows .tab)
+  // left the clip untouched, and only min-height here fixed it.
+  // Bisected 26 (clipped) -> 30 (clean) -> 28 (still clean) by
+  // screenshotting the live bar at 12x zoom after each restart.
+  min-height: 28px;
+  border-radius: $glyph-radius;
+  padding: 4px 8px 4px 10px;
+  margin-left: 4px;
+  transition: background-color 160ms ease;
+
+  &:hover { background-color: rgba(255, 255, 255, 0.08); }
+  &.open  { background-color: rgba($primary, 0.16); }
+
+  // The clock is the anchor of the right-hand group, and it earns that
+  // with weight rather than colour. It used to be painted $primary,
+  // which put the accent on the one element that never changes state.
+  //
+  // Tabular figures: proportional digits make a live clock twitch
+  // sideways every minute as 1s and 0s swap widths, and the same
+  // jitter shows up in the battery and volume readouts.
+  .time {
+    color: $fg;
+    font-size: 13.5px;
+    font-weight: 600;
+    // Tabular figures AND a hair of negative tracking. Adwaita Sans
+    // sets its numerals wide by default, which at bar size reads as
+    // gappy rather than as generous.
+    letter-spacing: -0.01em;
+    font-feature-settings: "tnum";
+
+    // Fires once, exactly when the displayed minute actually changes
+    // (Clock.tsx tracks this in JS and toggles the class) — a real
+    // event, not an idle loop, so it stays inside GNOME's "don't
+    // animate more than once a second" rule while giving the one
+    // element that never otherwise changes state a pulse of life.
+    &.tick { animation: clock-tick 400ms $ease-soft; }
+  }
+
+  // AM/PM is not part of the number. A size down and a shade back
+  // leaves the digits as the only thing the eye has to resolve.
+  .meridiem {
+    color: rgba($fg, 0.68);
+    font-size: 0.82em;
+    font-weight: 500;
+    margin-left: 3px;
+  }
+
+  .date {
+    color: rgba($fg, 0.7);
+    margin-right: 9px;
+  }
+}
+
+// A count that is always on. A pill in the accent rather than loose
+// digits beside a glyph: bare numerals next to an icon read as part of
+// the icon's label, a filled pill reads as a count — and it is the one
+// place on this bar where a number is the message rather than a
+// measurement.
+.glyph .badge {
+  background-color: rgba($primary, 0.22);
+  color: $primary;
+  font-size: 0.72em;
+  font-weight: 700;
+  padding: 1px 5px;
+  margin-left: 4px;
+  border-radius: 999px;
+  font-feature-settings: "tnum";
+}
+
+// Fires when the bell goes from empty to holding something, since
+// `.unread` is what changes. Not on every arrival after that — a bar
+// that pulses at every notification is a bar you end up turning off.
+.glyph.unread .badge { animation: badge-in 300ms $ease; }
+
+// Unread mail brightens the bell; DND greys it out. Both are states you
+// should be able to read without hovering.
+.glyph.unread   .icon { color: $fg; }
+.glyph.silenced .icon { color: rgba($fg, 0.6); }
+
+// Only ever on screen while the mic is muted, so it is allowed to be
+// loud — that is the entire message.
+.glyph.mic-muted .icon { color: $error; }
+.glyph.nightlight .icon { color: $tertiary; }
+.glyph.caffeine .icon { color: $primary; }
+.glyph.timer .icon, .glyph.timer .timer-text { color: $primary; font-feature-settings: "tnum"; }
+.glyph.timer.rest .icon, .glyph.timer.rest .timer-text { color: $tertiary; }
+
+// Which activity is current, if any — a passive indicator, not a
+// button (switching happens from SUPER+P). No hover/press feedback,
+// so it never implies a click that does nothing.
+.glyph.activity {
+  .icon, .value { color: $secondary; }
+  &:hover, &:active { background-color: transparent; box-shadow: none; }
+}
+
+// Recording: a red dot + running clock, only while recording.
+.glyph.rec {
+  .rec-dot {
+    min-width: 8px;
+    min-height: 8px;
+    border-radius: 999px;
+    background-color: $error;
+  }
+  .rec-time {
+    color: $error;
+    font-size: 0.92em;
+    font-feature-settings: "tnum";
+  }
+}
+
+// Keep-awake is a mode you can forget you left on.
+.glyph.awake .icon { color: $tertiary; }
+
+// The clock's group. `min-width` keeps the middle slot from collapsing
+// to the clock's exact width, which would let the two side groups pull
+// the time off-centre by a few pixels every time a glyph appeared.
+.middle { min-width: 96px; }
+
+.cluster { margin-left: 8px; }
+
+// The battery is a button now (it opens a panel), so it carries the
+// same padding and hover as the other glyphs rather than being a bare
+// box among them.
+.Battery {
+  all: unset;
+  border-radius: $glyph-radius;
+  padding: 4px 10px;
+  min-height: 18px;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0);
+  transition:
+    background-color 200ms $ease-soft,
+    box-shadow       200ms $ease-soft;
+
+  .icon  {
+    color: rgba($fg, 0.82);
+    -gtk-icon-size: 20px;
+
+    // The battery icon's own SVG paints its charge-level fill with
+    // classes named success/warning/error rather than following
+    // `color` — WhiteSur-dark's gtk.css sets its OWN literal palette
+    // for those classes (bypassing the `@define-color success_color`
+    // etc. above, which only feeds GTK's UA-default palette), so the
+    // redefinition alone left the icon on the theme's raw green/
+    // orange/red. Setting the palette here, at APPLICATION priority
+    // on the more specific selector, is what actually wins the
+    // cascade.
+    -gtk-icon-palette: success #{$tertiary}, warning #{$secondary}, error #{$error};
+  }
+  .value {
+    color: rgba($fg, 0.85);
+    margin-left: 5px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    font-feature-settings: "tnum";
+  }
+
+  // The unit, not the number. Pulled back by a pixel: two adjacent
+  // labels each carry their own side bearings, so a 0 margin still
+  // renders as a word space.
+  .unit {
+    color: rgba($fg, 0.42);
+    font-size: 0.8em;
+    margin-left: -1px;
+  }
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.14);
+  }
+  &.open  { background-color: rgba($primary, 0.16); }
+
+  &.low     .icon, &.low     .value { color: $error; }
+  &.charging .icon, &.charging .value { color: $secondary; }
+}
+
+.SysTray {
+  padding: 0 2px;
+
+  button {
+    all: unset;
+    padding: 1px 4px;
+    margin: 0 1px;
+    border-radius: $glyph-radius;
+    &:hover { background-color: rgba(255, 255, 255, 0.08); }
+  }
+}
+
+// ───────────────────────── Dropdowns ────────────────────────
+//
+// Each status glyph opens one of these. It is a full-monitor layer
+// window that is transparent except for the panel, so the panel can be
+// any size it likes and a click anywhere else dismisses it.
+window.BarDropdown { background-color: transparent; }
+
+.Dropdown {
+  // No text-shadow here, unlike the bar: this surface is dense enough
+  // that a shadow behind the text has nothing to rescue it from and
+  // only softens the edges.
+  text-shadow: none;
+
+  // Entrance/exit. `shown` is added a frame after the window mounts
+  // (see BarDropdown.tsx) so there is a start state to animate from.
+  opacity: 0;
+  margin-top: -8px;
+  transition:
+    opacity    170ms $ease-soft,
+    margin-top 220ms $ease;
+
+  // Denser than the bar, but GLASS — it was 0.88, which is a dark
+  // rectangle with a blur wasted behind it. conf/looks.lua runs size 8
+  // / passes 3 with vibrancy, and none of that reached the screen
+  // through a 12%-transparent fill.
+  //
+  // 0.66 is the floor for a surface holding this much small text: his
+  // own measurements (see the notes) put $fg-variant under 4.5:1 on a
+  // pale wallpaper below about 0.6.
+  background-color: rgba($bg, 0.66);
+  background-image: linear-gradient(to bottom, $glass-sheen-top, $glass-sheen-bot);
+  border-radius: 16px;
+  padding: 12px;
+  color: $fg;
+  font-size: 12px;
+  // NO outer shadow. conf/rules.lua blurs this namespace with
+  // `ignore_alpha = 0.1` and `xray = true`, so every pixel above 10%
+  // alpha gets replaced with blurred WALLPAPER — which turns a 0.34
+  // drop shadow into a bright halo around the panel instead of a
+  // shadow under it. Raising the threshold is not the fix either: the
+  // bar's own strip sits at 0.34 and would stop being blurred with it.
+  //
+  // A panel this opaque separates on its own; the rim does the rest.
+  // Light has a direction: bright along the top edge, a fainter ring
+  // holding the perimeter together. A single even outline reads as a
+  // drawn box; this reads as a pane catching light from above.
+  box-shadow:
+    inset 0  1px 0 0   rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 0   rgba(255, 255, 255, 0.05),
+    inset 0  0   0 1px rgba(255, 255, 255, 0.08);
+}
+
+
+.Dropdown.shown {
+  opacity: 1;
+  margin-top: 0;
+}
+
+// ────────────────────── Calendar ────────────────────────────────────────
+// Custom month grid (was a GtkCalendar): Monday-first, ISO week numbers in a dim gutter.
+.CalendarPanel {
+  min-width: 276px;
+  padding: 6px 8px 4px;
+
+  .cal-bigday { font-size: 22px; font-weight: 300; color: $fg; }
+
+  .cal-nav { padding-top: 2px; }
+  .cal-month { font-weight: 600; color: $fg; }
+  .cal-arrow {
+    all: unset;
+    min-width: 26px;
+    min-height: 26px;
+    border-radius: 8px;
+    color: $fg-variant;
+    &:hover { background-color: $glass-fill; }
+  }
+
+  .cal-dow  { color: $outline; font-size: 0.8em; padding: 2px 0; }
+  .cal-week { color: rgba($outline, 0.55); font-size: 0.75em; font-feature-settings: "tnum"; }
+  .cal-day {
+    padding: 4px 0;
+    border-radius: 8px;
+    color: $fg;
+    font-feature-settings: "tnum";
+    &.weekend { color: $fg-variant; }
+    &.other   { color: rgba($outline, 0.4); }
+    &.today   { background-color: $primary; color: $on-primary; font-weight: 700; }
+  }
+
+  .cal-clocks { padding-top: 8px; border-top: 1px solid $glass-fill; }
+  .cal-cname  { color: $fg-variant; }
+  .cal-ctime  { min-width: 68px; font-feature-settings: "tnum"; }
+
+  .cal-today {
+    all: unset;
+    padding: 5px 10px;
+    border-radius: 8px;
+    color: $primary;
+    background-color: rgba($primary, 0.14);
+    &:hover { background-color: rgba($primary, 0.24); }
+  }
+}
+
+.Panel {
+
+  .panel-title {
+    color: $fg;
+    font-weight: 600;
+  }
+
+  .status {
+    color: $fg-variant;
+    font-size: 0.85em;
+  }
+
+  .value {
+    color: $fg-variant;
+    font-feature-settings: "tnum";
+  }
+
+  // Small secondary text on translucent glass. Was $outline AND (below) a
+  // second `opacity: 0.72`, which stacked into unreadably dim labels
+  // (Bandwidth's Upload/Local IP/Route). $fg-variant at ~0.8 stays clearly
+  // secondary without disappearing.
+  .dim {
+    color: $fg-variant;
+    font-size: 0.86em;
+  }
+
+  // The JSX element is <slider>, but the GTK CSS node is `scale` —
+  // `slider` names the handle *inside* it. Selecting `slider` at this
+  // level set min-width on the handle, which is why it once rendered as
+  // a 140px oval.
+  scale {
+    min-width: 150px;
+    margin: 2px 2px;
+
+    trough {
+      min-height: 5px;
+      border-radius: 999px;
+      background-color: $glass-fill;
+
+      highlight {
+        background-color: $primary;
+        border-radius: 999px;
+      }
+
+      slider {
+        background-color: $fg;
+        border-radius: 999px;
+        min-width: 12px;
+        min-height: 12px;
+        margin: -5px;
+      }
+    }
+  }
+}
+
+// GtkSwitch arrived in stock saturated GTK blue with a white knob — the one
+// off-palette colour in the shell. Same convention as `.row.active` and the
+// Control Center tiles: quiet track at rest, accent tint when on.
+.Panel switch {
+  background-color: $glass-fill;
+  background-image: none;
+  border: none;
+  border-radius: 999px;
+  box-shadow: none;
+  min-width: 36px;
+  min-height: 20px;
+  outline: none;
+  transition: background-color 150ms ease;
+
+  slider {
+    background-color: $fg;
+    background-image: none;
+    border: none;
+    border-radius: 999px;
+    box-shadow: none;
+    min-width: 14px;
+    min-height: 14px;
+    margin: 3px;
+  }
+
+  &:checked {
+    background-color: rgba($primary, 0.4);
+    slider { background-color: $primary; }
+  }
+}
+
+// A header line: title on the left, small square buttons on the right.
+.Panel .panel-head {
+  .chip {
+    all: unset;
+    padding: 2px 7px;
+    border-radius: 7px;
+    color: rgba($fg, 0.7);
+    transition: background-color 150ms ease, color 150ms ease;
+
+    &:hover { background-color: $glass-fill; color: $fg; }
+
+    // A latched toggle (Do Not Disturb) has to look pressed, not
+    // hovered — same fill as `.row.active`, in the accent.
+    &.on {
+      background-color: rgba($primary, 0.2);
+      color: $primary;
+    }
+  }
+}
+
+// ── notification history ──
+.NotificationPanel {
+  min-width: 276px;
+
+  .note-scroll { min-height: 0; }
+
+  .note {
+    padding: 6px 7px;
+    border-radius: 9px;
+    background-color: rgba(255, 255, 255, 0.045);
+
+    // Urgency earns a mark, not a colour wash: one bar down the left
+    // edge, which is legible on any wallpaper-derived palette.
+    &.critical { box-shadow: inset 2px 0 0 0 $error; }
+
+    .thumb   { border-radius: 6px; margin-right: 8px; }
+    .app     { color: $outline; font-size: 0.78em; }
+    .when    { color: $outline; font-size: 0.78em; }
+    .summary { color: $fg; font-weight: 600; }
+    .body    { color: $fg-variant; font-size: 0.85em; }
+
+    // The dismiss button appears on hover. A row of permanent ✕s reads
+    // as a form; the affordance is only needed under the pointer.
+    .dismiss {
+      all: unset;
+      padding: 1px 4px;
+      margin-left: 6px;
+      border-radius: 6px;
+      color: transparent;
+      transition: color 150ms ease, background-color 150ms ease;
+    }
+
+    &:hover .dismiss { color: $outline; }
+    // A keyboard user has no hover: the dismiss ✕ has to be visible when it
+    // holds focus, or the ring frames nothing.
+    .dismiss:focus-visible { color: $fg; }
+    .dismiss:hover   { background-color: $glass-fill; color: $fg; }
+  }
+}
+
+// ── battery ──
+.BatteryPanel {
+  min-width: 252px;
+
+  levelbar.charge {
+    min-height: 5px;
+
+    trough { background-color: $glass-fill; border-radius: 999px; }
+    block  { border-radius: 999px; }
+    block.filled { background-color: $primary; }
+  }
+}
+
+// ── phone (Valent) ──
+.PhonePanel {
+  min-width: 252px;
+
+  .phone-battery {
+    padding: 4px 0;
+    image { color: $primary; }
+  }
+}
+
+// ── per-app volume (bar volume dropdown and Control Center) ──
+.AppMixer {
+  padding-top: 8px;
+  border-top: 1px solid $glass-fill;
+
+  .app-row { padding: 2px 0; }
+  .icon-btn { min-width: 22px; min-height: 22px; padding: 0; }
+  .icon-btn.muted { opacity: 0.55; }
+}
+
+// ── system monitor ──
+.SystemPanel {
+  min-width: 340px;
+
+  .sys-title { font-size: 0.78em; letter-spacing: 0.06em; text-transform: uppercase; color: $outline; font-weight: 600; }
+  .sys-head  { color: $fg; font-weight: 600; font-feature-settings: "tnum"; }
+
+  // history graphs: colour = the widget's `color`, read by the cairo draw function
+  .spark { min-height: 34px; }
+  .spark-cpu   { color: $primary; }
+  .spark-mem   { color: $tertiary; }
+  .spark-gpu   { color: $secondary; }
+  .spark-cores { color: $primary; min-height: 20px; }
+
+  levelbar.gauge {
+    min-height: 5px;
+    trough { background-color: $glass-fill; border-radius: 999px; }
+    block  { border-radius: 999px; }
+    block.filled { background-color: $primary; }
+    &.warn block.filled { background-color: $error; }
+  }
+
+  .sys-procs { padding-top: 10px; border-top: 1px solid $glass-fill; }
+  .sys-pname { color: $fg-variant; }
+  .sys-pmem  { min-width: 54px; font-feature-settings: "tnum"; }
+  .sys-pcpu  { min-width: 38px; font-feature-settings: "tnum"; }
+
+  .sys-seg {
+    all: unset;
+    padding: 1px 9px;
+    border-radius: 999px;
+    font-size: 0.8em;
+    color: $fg-variant;
+    &:hover  { background-color: $glass-fill; }
+    &.active { background-color: rgba($primary, 0.2); color: $primary; }
+  }
+}
+.glyph.hot .icon, .glyph.hot image { color: $error; }
+
+.BatteryPanel .care { padding-top: 8px; border-top: 1px solid $glass-fill; }
+
+// ── bandwidth ──
+.BandwidthPanel {
+  min-width: 252px;
+
+  .bandwidth-ip {
+    padding-top: 8px;
+    // A hairline rather than a second box — this is one panel with two
+    // sections, not two stacked cards.
+    border-top: 1px solid $glass-fill;
+  }
+}
+
+// ── workspace preview ──
+//
+// A floorplan, not a screenshot: flat colour blocks standing in for
+// windows, sized from real client geometry (see WorkspacePreview.tsx).
+.WorkspacePreview {
+  min-width: 252px;
+
+  .map {
+    background-color: rgba($fg, 0.04);
+    border-radius: 6px;
+    padding: 3px;
+  }
+
+  .preview-client {
+    background-color: rgba($fg, 0.10);
+    border-radius: 5px;
+    transition: background-color 150ms $ease-soft;
+
+    image { opacity: 0.85; }
+
+    // The window that actually has the keyboard, wherever it is — the
+    // one thing worth a second colour on an otherwise flat map.
+    &.focused {
+      background-color: rgba($primary, 0.22);
+      box-shadow: inset 0 0 0 1px rgba($primary, 0.5);
+    }
+  }
+}
+
+// ── session ──
+.SessionPanel {
+  min-width: 276px;
+
+  .actions .action {
+    all: unset;
+    padding: 7px 2px;
+    border-radius: 10px;
+    color: $fg-variant;
+    transition: background-color 150ms ease, color 150ms ease;
+
+    .icon    { font-size: 15px; }
+    .caption { font-size: 0.72em; color: $outline; }
+
+    &:hover {
+      background-color: $glass-fill;
+      color: $fg;
+    }
+
+    // Armed: one more click does it. Loud on purpose — this is the
+    // state where the next click ends the session.
+    &.armed {
+      background-color: rgba($error, 0.22);
+      color: $error;
+      .caption { color: $error; }
+    }
+
+    &.danger:hover { color: $error; }
+  }
+
+  .row.toggle {
+    padding: 6px 8px;
+    .icon  { font-size: 14px; }
+    &.active {
+      background-color: rgba($tertiary, 0.16);
+      label { color: $tertiary; }
+    }
+  }
+}
+
+// A glyph-shaped icon that is NOT a button — the brightness icon
+// beside its slider. Same metrics as `.glyph`, none of the affordance.
+.Panel .glyph-static {
+  color: rgba($fg, 0.7);
+  -gtk-icon-size: 16px;
+  padding: 0 4px;
+}
+
+// The "this one is selected" mark in a list: an output device, the
+// connected network. Accent, and only present when true — GTK collapses
+// a hidden image, so the row does not reserve space for a mark it is
+// not showing.
+.Panel .tick { color: $primary; }
+.Panel .dim  { opacity: 0.8; }
+
+// One row in a dropdown list: an output device, a network, a BT device.
+.row {
+  all: unset;
+  border-radius: 8px;
+  padding: 4px 8px;
+  transition: background-color 150ms ease;
+
+  &:hover { background-color: $glass-fill; }
+  label { color: $fg-variant; }
+
+  &.active label { color: $primary; }
+  &.busy   label { color: $tertiary; }
+}
+
+.password-row {
+  padding: 2px 2px 4px;
+
+  entry {
+    background-color: rgba($fg, 0.08);
+    border-radius: 8px;
+    padding: 3px 8px;
+    color: $fg;
+  }
+
+  .confirm {
+    all: unset;
+    background-color: rgba($primary, 0.2);
+    border-radius: 8px;
+    padding: 3px 10px;
+    label { color: $primary; }
+  }
+}
+
+.PlayerPanel {
+  // One centred column, no nested card (05-visual-direction.md: the
+  // "too ai" tell is a decorative surface inside the panel). Alignment
+  // comes from a shared axis and shared width, not from a container.
+  // 248px = PlayerMenu.tsx's HAIRLINE_WIDTH.
+  min-width: 248px;
+
+  .art-wrap {
+    margin: 2px 0 12px;
+    transition: opacity 260ms $ease;
+  }
+  // Paused: the cover steps back so the state is readable at a glance.
+  .art-wrap.paused { opacity: 0.55; }
+  .art {
+    border-radius: 16px;
+    min-width: 108px;
+    min-height: 108px;
+    box-shadow: 0 8px 22px -6px rgba($shadow, 0.6), 0 0 0 1px rgba($fg, 0.06);
+    animation: cover-in 380ms $ease;
+  }
+  .art.placeholder {
+    background-color: $glass-fill;
+    color: $fg-variant;
+  }
+  .art-glyph { font-size: 40px; color: rgba($fg, 0.35); }
+
+  .track {
+    color: $fg;
+    font-weight: 700;
+    font-size: 1.3em;
+    letter-spacing: -0.01em;
+    animation: track-in 340ms $ease;
+  }
+  .artist {
+    color: $fg-variant;
+    font-size: 0.98em;
+    margin-top: 2px;
+    animation: track-in 420ms $ease;
+  }
+
+  .transport { margin-top: 14px; }
+  .transport .glyph {
+    all: unset;
+    color: $fg-variant;
+    padding: 0;
+    border-radius: 999px;
+    transition: background-color 150ms ease, color 150ms ease;
+    &:hover { color: $fg; background-color: rgba($fg, 0.1); }
+    &:active { background-color: rgba($fg, 0.16); }
+  }
+  .transport .glyph:disabled { opacity: 0.28; }
+  .transport .sym { font-size: 22px; }
+  .transport .sym.swap { animation: glyph-in 220ms $ease; }
+  .transport .glyph.nudge-next .sym { animation: nudge-next 300ms $ease; }
+  .transport .glyph.nudge-prev .sym { animation: nudge-prev 300ms $ease; }
+  .transport .glyph.primary .sym { font-size: 26px; }
+  // Solid accent play button, dark glyph (Android/Windows now-playing).
+  // The cover-tint provider in PlayerMenu.tsx overrides these colours per
+  // track; the transitions here make the change glide.
+  .transport .glyph.primary {
+    color: $on-primary;
+    background-color: $primary;
+    transition:
+      background-color 420ms $ease,
+      color            420ms $ease;
+    &:hover { background-color: shade($primary, 1.12); }
+  }
+  .transport .glyph.mini { color: $fg-variant; }
+  .transport .glyph.mini .sym { font-size: 15px; }
+  .transport .glyph.mini.off { opacity: 0.45; }
+  .transport .glyph.mini.on  { color: $primary; }
+  .transport .glyph.mini:hover { opacity: 1; }
+
+  // The progress wave is drawn in PlayerMenu.tsx (buildWave); this only
+  // supplies its colour, which the tint provider replaces per cover.
+  .wave { color: $primary; transition: color 420ms $ease; }
+  .wave-hit { margin-top: 12px; }
+  .times { margin-top: 0; }
+  .time {
+    color: $fg-variant;
+    font-size: 0.8em;
+    font-feature-settings: "tnum";
+    opacity: 0.8;
+  }
+}
+
+// ── widgets not currently mounted in the bar ──
+// Kept styled so reintroducing one is a one-line change in Bar.tsx.
+.Cava {
+  padding: 2px 6px;
+  min-height: 16px;
+
+  .cava-bar {
+    min-width: 3px;
+    background-color: $primary;
+    border-radius: 1px;
+    transition: min-height 60ms linear;
+  }
+}
+
+.Workspaces {
+  padding: 0 2px;
+
+  button {
+    all: unset;
+    min-width: 14px;
+    padding: 0 4px;
+    margin: 1px;
+    border-radius: 6px;
+    color: $outline;
+    transition: all 180ms ease;
+
+    &:hover    { background-color: $glass-fill; }
+    &.occupied { color: $fg-variant; }
+
+    &.active {
+      background-color: rgba($primary, 0.2);
+      color: $primary;
+      min-width: 26px;
+    }
+
+    &.named {
+      font-size: 0.85em;
+      letter-spacing: 0.02em;
+      padding: 1px 8px;
+      &.active { min-width: 0; }
+    }
+  }
+}
+
+.Media .title { color: $fg; }
+
+// ─────────────────── Notification popups ───────────────────
+window.NotificationPopups { background-color: transparent; }
+
+.Notification {
+  @include dropdown-glass(14px);
+  animation: slide-in-right 320ms $ease;
+  margin: 8px 10px;
+  padding: 12px;
+  min-width: 340px;
+  border-left: 3px solid $primary;
+
+  &.critical { border-left-color: $error; }
+
+  .app-name { color: $fg-variant; font-size: 11px; }
+  .summary  { color: $fg; font-weight: bold; }
+  .body     { color: $fg-variant; }
+
+  .actions button {
+    all: unset;
+    @include pill;
+    background-color: $glass-fill;
+    color: $fg;
+    margin: 6px 4px 0 0;
+    padding: 4px 12px;
+    &:hover { background-color: $primary; color: $on-primary; }
+  }
+}
+
+// ─────────────────────────── OSD ───────────────────────────
+window.Osd { background-color: transparent; }
+
+.Osd {
+  @include dropdown-glass(16px);
+  animation: rise-in 260ms $ease;
+  padding: 14px 18px;
+  min-width: 220px;
+
+  label { font-size: 22px; }
+
+  levelbar {
+    min-height: 6px;
+    block { border-radius: 999px; }
+    trough { background-color: $glass-fill; border-radius: 999px; }
+    block.filled { background-color: $primary; }
+  }
+}
+
+// ─────────────────── Cursor click highlighter ───────────────────
+window.ClickHighlight { background-color: transparent; }
+
+.click-ripple {
+  min-width: 56px;
+  min-height: 56px;
+  border-radius: 999px;
+  background-color: transparent;
+  box-shadow: inset 0 0 0 3px rgba($primary, 0.9);
+  opacity: 0;
+
+  &.active { animation: click-ripple 380ms $ease-soft; }
+}
+
+// ────────────────────── Control Center ─────────────────────
+window.ControlCenter { background-color: transparent; }
+
+// Surface, title and slider metrics come from `.Dropdown` / `.Panel`, so
+// this reads as the same family as every bar dropdown. Only what is
+// specific to quick settings lives here.
+.ControlCenter {
+  min-width: 320px;
+  margin: 6px 8px;   // clear of the screen edge / bar
+
+  // Toggle pills: name + status. Off is a whisper, on is accent-tinted —
+  // the same convention as `.row.active` and the DND chip.
+  .tile {
+    all: unset;
+    padding: 8px 11px;
+    border-radius: 12px;
+    background-color: $glass-fill;
+    color: $fg-variant;
+    transition: background-color 150ms ease, color 150ms ease;
+
+    .tile-title  { font-weight: 600; }
+    .tile-status { font-size: 0.82em; color: $outline; }
+
+    &:hover { background-color: rgba($fg, 0.12); }
+
+    &.active {
+      background-color: rgba($primary, 0.2);
+      color: $primary;
+      .tile-status { color: rgba($primary, 0.75); }
+    }
+  }
+
+  .slider-row {
+    padding: 3px 0;
+
+    .icon-btn {
+      all: unset;
+      padding: 4px;
+      border-radius: 8px;
+      color: $fg;
+      transition: background-color 150ms ease, color 150ms ease;
+      &:hover { background-color: $glass-fill; }
+      &.muted { color: $outline; }
+    }
+    // same footprint as `.icon-btn` (4px pad + 16px icon) so rows align
+    .glyph-static { padding: 0 4px; min-width: 16px; }
+
+    .value { min-width: 34px; color: $fg-variant; font-feature-settings: "tnum"; }
+  }
+
+  // Recording sits under the profiles as flat segments, and turns into a
+  // single red Stop while a recording is running.
+  .recrow {
+    padding-top: 0;
+
+    &.stop {
+      all: unset;
+      padding: 7px 4px;
+      border-radius: 8px;
+      background-color: rgba($error, 0.2);
+      color: $error;
+      transition: background-color 150ms ease;
+      &:hover { background-color: rgba($error, 0.3); }
+      label { font-weight: 600; font-feature-settings: "tnum"; }
+    }
+
+    .seg {
+      all: unset;
+      padding: 6px 4px;
+      border-radius: 8px;
+      color: $fg-variant;
+      transition: background-color 150ms ease, color 150ms ease;
+      label { font-size: 0.92em; }
+      &:hover { background-color: $glass-fill; color: $fg; }
+    }
+  }
+
+  // One hairline, then three flat options: a section of the same panel,
+  // not a card inside it.
+  .profiles {
+    padding-top: 10px;
+    border-top: 1px solid $glass-fill;
+
+    .seg {
+      all: unset;
+      padding: 6px 4px;
+      border-radius: 8px;
+      color: $fg-variant;
+      transition: background-color 150ms ease, color 150ms ease;
+      label { font-size: 0.92em; }
+
+      &:hover { background-color: $glass-fill; color: $fg; }
+      &.active { background-color: rgba($primary, 0.2); color: $primary; }
+    }
+  }
+}
+
+// ────────────────────── Keybind cheat sheet ─────────────────────
+window.Cheatsheet { background-color: transparent; }
+
+// Same glass as every dropdown (`.Dropdown`); flat inside — group titles,
+// rows, small keycaps. No cards.
+.Cheat {
+  padding: 18px 22px;
+
+  .ks-search {
+    all: unset;
+    min-width: 160px;
+    padding: 5px 11px;
+    border-radius: 9px;
+    background-color: $glass-fill;
+    color: $fg;
+    caret-color: $primary;
+    &:focus { background-color: rgba($fg, 0.12); }
+    placeholder { color: $outline; }
+  }
+
+  .ks-columns { padding-top: 4px; }
+
+  .ks-title {
+    color: $outline;
+    font-size: 0.72em;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    padding: 0 0 4px;
+  }
+
+  .ks-row { padding: 3px 0; min-width: 270px; }
+  .ks-text { color: $fg-variant; }
+  .ks-sep  { color: $outline; font-size: 0.85em; }
+
+  .kbd {
+    padding: 1px 6px;
+    min-width: 12px;
+    border-radius: 5px;
+    background-color: $glass-fill;
+    color: $fg;
+    font-size: 0.85em;
+    font-feature-settings: "tnum";
+  }
+}
+
+// ────────────────────── Wallpaper switcher ─────────────────────
+//
+// A bottom-anchored overlay strip. Same island vocabulary as the bar:
+// a translucent panel over the layer_rule blur, chips with $chip-radius.
+// GTK4 CSS again — no flexbox, no `gap`; spacing/alignment are widget
+// props set in WallpaperSwitcher.tsx.
+
+window.WallpaperSwitcher {
+  background-color: transparent;
+  color: $fg;
+}
+
+.WallpaperSwitcher .panel {
+  background-color: rgba($bg, 0.9);
+  border-radius: 18px 18px 0 0;
+  padding: 16px;
+  margin: 0 8px;
+}
+
+// ── the three target tiles: desktop / lock / login ──
+.target-tile {
+  background-color: $bg-container;
+  border-radius: 12px;
+  padding: 8px;
+  border: 2px solid transparent;
+
+  label { color: $fg-variant; }
+
+  &:hover { background-color: $bg-container-hi; }
+
+  // the selected target is where the next click lands — make that loud,
+  // it is the one thing a mis-click gets wrong
+  &.selected {
+    border-color: $primary;
+    background-color: $bg-container-hi;
+    label { color: $primary; }
+  }
+
+  picture { border-radius: 8px; }
+}
+
+.empty-preview {
+  background-color: $bg;
+  border-radius: 8px;
+
+  label {
+    color: $outline;
+    font-size: 0.85em;
+  }
+}
+
+// ── action row ──
+.actions .action,
+.category-selector {
+  background-color: $bg-container;
+  border-radius: $chip-radius;
+  padding: 4px 10px;
+  min-height: 18px;
+
+  &:hover { background-color: $bg-container-hi; }
+}
+
+.category-selector label { color: $fg-variant; }
+
+.popover-list {
+  padding: 4px;
+
+  .category {
+    background-color: transparent;
+    border-radius: 8px;
+    padding: 4px 10px;
+
+    &:hover { background-color: $bg-container-hi; }
+  }
+}
+
+.status {
+  min-width: 18px;
+
+  &.busy  { color: $tertiary; }
+  &.ok    { color: $primary; }
+  &.error { color: $error; }
+}
+
+// ── delete confirmation ──
+.confirm {
+  background-color: rgba($error, 0.12);
+  border-radius: $chip-radius;
+  padding: 6px 10px;
+
+  button {
+    background-color: $bg-container;
+    border-radius: 8px;
+    padding: 2px 10px;
+  }
+
+  .danger {
+    background-color: $error;
+    label { color: $bg; }
+  }
+}
+
+// ── the wallpaper strip ──
+.all-wallpapers { padding: 4px 2px; }
+
+.wallpaper-tile {
+  background-color: $bg-container;
+  border-radius: 12px;
+  padding: 6px;
+  border: 2px solid transparent;
+
+  &:hover { background-color: $bg-container-hi; }
+
+  // "this is what is currently on the selected target"
+  &.active { border-color: $primary; }
+
+  // armed for deletion by a right-click
+  &.doomed { border-color: $error; }
+
+  picture { border-radius: 8px; }
+
+  .tile-name {
+    color: $fg-variant;
+    font-size: 0.78em;
+  }
+
+  .badge { color: $tertiary; }
+}
+
+// ────────────────────── Keyboard focus ring (late on purpose) ──────────
+//
+// Same ring as the bar glyphs above (2px inset accent). It has to come
+// AFTER the component rules: the tiles, segments, icon buttons, session
+// actions, chips and the record row are all `all: unset`, which also
+// wipes the ring, and at equal specificity the later rule wins. Without
+// this a keyboard user could Tab through Control Center and the Session
+// panel with no visible sign of where focus was (checked: nine Tab
+// presses, nothing on screen moved).
+.tile.tile.tile:focus-visible,
+.seg.seg.seg:focus-visible,
+.icon-btn.icon-btn.icon-btn:focus-visible,
+.action.action.action:focus-visible,
+.recrow.stop.stop:focus-visible,
+.chip.chip.chip:focus-visible,
+.dismiss.dismiss.dismiss:focus-visible,
+.row.toggle.toggle:focus-visible,
+.Notification button:focus-visible,
+.target-tile.target-tile.target-tile:focus-visible {
+  box-shadow: inset 0 0 0 2px $primary;
+}
+
+// A switch has no inset room (it IS the pill); ring it from outside.
+.Panel switch:focus-visible {
+  box-shadow: 0 0 0 2px $primary;
+}
+
+// ────────────────────── Weather ─────────────────────────────────────────
+// Flat on the dropdown glass: a headline, the next hours, hairline-separated days.
+.WeatherPanel {
+  min-width: 276px;
+
+  .wx-icon { color: $fg; }
+  .wx-temp {
+    font-size: 30px;
+    font-weight: 300;
+    font-feature-settings: "tnum";
+    color: $fg;
+  }
+
+  .wx-hours {
+    padding: 8px 0 2px;
+    border-top: 1px solid $glass-fill;
+  }
+
+  .wx-days {
+    padding-top: 8px;
+    border-top: 1px solid $glass-fill;
+  }
+  .wx-dayname { color: $fg-variant; }
+  .wx-day .value { font-feature-settings: "tnum"; }
+}
+
+// An old forecast (last refresh failed): dim the chip so it is not mistaken for live data.
+.glyph.stale { opacity: 0.6; }
+
+// ────────────────────── Alt-Tab switcher ─────────────────────────────────
+window.Switcher { background-color: transparent; }
+.Switcher .switch-panel {
+  @include dropdown-glass(18px);
+  padding: 14px;
+}
+.Switcher .switch-card {
+  min-width: 118px;
+  padding: 12px 8px 10px;
+  border-radius: 14px;
+  border: 2px solid transparent;
+  .switch-title { color: $fg; font-weight: 600; }
+  &.on {
+    background-color: rgba($primary, 0.18);
+    border-color: $primary;
+  }
+}

@@ -1,0 +1,148 @@
+/*
+ * The launcher, in the same family as the bar dropdowns and the control
+ * center: one translucent glass surface (blurred by the "rofi" layer rule
+ * in conf/rules.lua), flat inside — no boxed input, no cards — a hairline
+ * under the search, an accent-tinted selected row, and a footer that
+ * holds the mode tabs and the key hints (the Raycast arrangement).
+ * Colours come from colors.rasi, which matugen regenerates.
+ */
+@import "colors"
+
+* {
+    background-color: transparent;
+    text-color:       @fg;
+}
+
+window {
+    location:         north;
+    anchor:           north;
+    y-offset:         14%;
+    width:            980px;
+    padding:          0;
+    background-color: @glass;
+    background-image: linear-gradient(to bottom, #ffffff0d, #ffffff03);
+    border:           1px;
+    border-color:     @rim;
+    border-radius:    16px;
+}
+
+mainbox {
+    children: [ inputbar, message, listview, footer ];
+    spacing:  0;
+}
+
+/* ── search: no box, just a hairline under it ── */
+inputbar {
+    expand:       false;
+    children:     [ entry ];
+    padding:      16px 18px 14px 18px;
+    border:       0 0 1px 0;
+    border-color: @hair;
+}
+
+entry {
+    placeholder:       "Search…";
+    placeholder-color: @outline;
+    cursor:            text;
+}
+
+/* ── results ── */
+listview {
+    lines:        7;
+    columns:      1;
+    scrollbar:    false;
+    spacing:      2px;
+    padding:      8px;
+    fixed-height: false;
+    dynamic:      true;
+}
+
+element {
+    padding:       8px 10px;
+    spacing:       12px;
+    border-radius: 10px;
+    cursor:        pointer;
+}
+
+element normal active {
+    text-color: @primary;
+}
+
+element alternate normal, element alternate active {
+    background-color: transparent;
+}
+
+element selected {
+    background-color: @tint;
+    text-color:       @primary;
+}
+
+element-icon {
+    size:            34px;
+    vertical-align:  0.5;
+}
+
+element-text {
+    vertical-align: 0.5;
+    text-color:     inherit;
+}
+
+message {
+    expand:       false;
+    padding:      8px 18px;
+    border:       0 0 1px 0;
+    border-color: @hair;
+}
+
+textbox {
+    text-color: @outline;
+}
+
+error-message {
+    text-color: @urgent;
+    padding:    10px 18px;
+}
+
+/* ── footer: mode tabs left, key hints right ── */
+footer {
+    expand:       false;
+    orientation:  horizontal;
+    children:     [ mode-switcher, textbox-hint ];
+    padding:      7px 10px;
+    spacing:      8px;
+    border:       1px 0 0 0;
+    border-color: @hair;
+}
+
+mode-switcher {
+    expand:  false;
+    spacing: 2px;
+}
+
+button {
+    expand: false;
+}
+
+button {
+    padding:       4px 10px;
+    border-radius: 8px;
+    text-color:    @outline;
+    cursor:        pointer;
+}
+
+button selected {
+    background-color: @tint;
+    text-color:       @primary;
+}
+
+button normal {
+    background-color: transparent;
+}
+
+textbox-hint {
+    expand:           true;
+    content:          "⏎ open  ⇧→ mode  esc close";
+    horizontal-align: 1;
+    vertical-align:   0.5;
+    text-color:       @outline;
+}

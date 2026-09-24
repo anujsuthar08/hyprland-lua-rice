@@ -1,0 +1,82 @@
+# matugen — generate a whole-desktop palette from the current wallpaper.
+#
+#   matugen image ~/.config/wallpapers/<image>
+#
+# Each [templates.*] block renders one file. `post_hook` reloads the app
+# that consumes it, so a wallpaper change re-themes everything live.
+#
+# Paths are written for the DEPLOYED layout (~/.config/...). While
+# building, run with --config and they still point at the real targets;
+# the deploy script is what makes those paths exist.
+
+# Verified against matugen 4.2.0.
+#   * the [config] section is REQUIRED — without it matugen errors with
+#     "Error reading config file"
+#   * matugen does NOT set the wallpaper here on purpose. scripts/
+#     wallpaper.sh owns that, because an animated wallpaper is driven by
+#     mpvpaper while matugen only ever sees a still frame — letting
+#     matugen also call awww would fight mpvpaper for the surface.
+[config]
+reload_apps = true
+
+# ── Hyprland: borders/shadows, consumed by conf/theme.lua ───────────
+[templates.hyprland]
+input_path  = "~/.config/hypr/matugen/templates/colors.lua"
+output_path = "~/.config/hypr/conf/colors.lua"
+post_hook   = "hyprctl reload"
+
+# ── AGS shell: scss variables ───────────────────────────────────────
+[templates.ags]
+input_path  = "~/.config/hypr/matugen/templates/colors.scss"
+output_path = "~/.config/ags/style/_colors.scss"
+post_hook   = "ags request -i shell restart-css || true"
+
+# ── rofi ────────────────────────────────────────────────────────────
+[templates.rofi]
+input_path  = "~/.config/hypr/matugen/templates/colors.rasi"
+output_path = "~/.config/rofi/colors.rasi"
+
+# ── kitty ───────────────────────────────────────────────────────────
+[templates.kitty]
+input_path  = "~/.config/hypr/matugen/templates/colors-kitty.conf"
+output_path = "~/.config/kitty/colors.conf"
+post_hook   = "kill -SIGUSR1 $(pgrep -x kitty) 2>/dev/null || true"
+
+# ── hyprlock ────────────────────────────────────────────────────────
+[templates.hyprlock]
+input_path  = "~/.config/hypr/matugen/templates/colors-hyprlock.conf"
+output_path = "~/.config/hypr/hyprlock-colors.conf"
+
+# ── hyprexpose (workspace overview, SUPER+O) ─────────────────────────
+# It only reads config.toml at process start (see 2026-09-22 build-state
+# note), so a plain SIGUSR1 does nothing for colours — kill and relaunch
+# with the same flags autostart.lua uses. Dormant daemon, ~0% CPU, so a
+# throwaway restart on every wallpaper change is cheap.
+[templates.hyprexpose]
+input_path  = "~/.config/hypr/matugen/templates/colors-hyprexpose.toml"
+output_path = "~/.config/hyprexpose/config.toml"
+post_hook   = "pkill -x hyprexpose; setsid -f hyprexpose --allow-mouse >/dev/null 2>&1"
+
+# ── GTK 3 and GTK 4 apps (Thunar, pavucontrol, nm-connection-editor…) ──
+# GTK 3 gets the plain rules; GTK 4 gets a copy scoped to exclude the AGS shell
+# (itself a GTK 4 app). Apps pick it up the next time they start.
+[templates.gtk3]
+input_path  = "~/.config/hypr/matugen/templates/colors-gtk.css"
+output_path = "~/.config/gtk-3.0/gtk.css"
+
+[templates.gtk4]
+input_path  = "~/.config/hypr/matugen/templates/colors-gtk4.css"
+output_path = "~/.config/gtk-4.0/gtk.css"
+
+# ── Qt 5 and Qt 6 apps (vlc, …) via qt5ct / qt6ct ────────────────────
+# QT_QPA_PLATFORMTHEME=qt6ct is set in conf/env.lua. qt-theme.sh writes the
+# small per-user qt*ct.conf that points at these colours (it needs an absolute path).
+[templates.qt6ct]
+input_path  = "~/.config/hypr/matugen/templates/colors-qt.conf"
+output_path = "~/.config/qt6ct/colors/matugen.conf"
+post_hook   = "~/.config/hypr/scripts/qt-theme.sh"
+
+[templates.qt5ct]
+input_path  = "~/.config/hypr/matugen/templates/colors-qt.conf"
+output_path = "~/.config/qt5ct/colors/matugen.conf"
+post_hook   = "~/.config/hypr/scripts/qt-theme.sh"
