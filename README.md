@@ -1,5 +1,11 @@
 # hyprland-lua-rice — a Hyprland (Lua) desktop
 
+![License](https://img.shields.io/github/license/anujsuthar08/hyprland-lua-rice)
+![Stars](https://img.shields.io/github/stars/anujsuthar08/hyprland-lua-rice)
+![Last commit](https://img.shields.io/github/last-commit/anujsuthar08/hyprland-lua-rice)
+
+![Desktop overview](.github/screenshots/hero.webp)
+
 A from-scratch Hyprland desktop: compositor config in **Lua** (not the old
 hyprlang `.conf`), an [AGS](https://github.com/Aylur/ags) v3 / Astal shell
 (bar, dropdowns, notifications, OSD, Control Center), a rofi launcher with extra
@@ -34,6 +40,14 @@ and per-app volume, power profiles, screen recording); a live
 a restyled lock screen (with the current weather and what is playing); multi-monitor hotplug;
 phone integration (battery, ring, ping, file browse — via Valent, optional); a cursor
 click highlighter for recordings.
+
+## Screenshots
+
+| | |
+|---|---|
+| ![Bar, expanded on hover](.github/screenshots/bar.webp) Bar (expanded on hover) | ![Control Center](.github/screenshots/control-center.webp) Control Center + calendar/weather |
+| ![Launcher](.github/screenshots/launcher.webp) App launcher (rofi, glass theme) | ![Keybind cheat sheet](.github/screenshots/cheatsheet.webp) Live keybind cheat sheet (`SUPER+F1`) |
+| ![Emoji picker with skin tones](.github/screenshots/emoji.webp) Emoji picker, with skin tones | |
 
 ## Requirements
 
