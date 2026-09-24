@@ -14,7 +14,8 @@ hyprlang `.conf`), an [AGS](https://github.com/Aylur/ags) v3 / Astal shell
 (bar, dropdowns, notifications, OSD, Control Center), a rofi launcher with extra
 modes, and wallpaper-driven theming with matugen.
 
-Targets **Hyprland 0.56.x on Arch Linux** (AMD iGPU laptop, 1920x1080@144).
+Targets **Hyprland 0.56.x on Arch Linux** (developed on a 1920x1080@144 laptop — see
+**GPU** under Requirements for the hardware this has and hasn't been tested on).
 
 > The compositor config is Lua (`hyprland.lua`, `conf/*.lua`). `hyprlock`,
 > `hypridle`, `hyprsunset` and `rofi` are separate apps and keep their own
@@ -97,8 +98,8 @@ updating at all, add it to `IgnorePkg` in `/etc/pacman.conf`.
 ## Install / restore on a fresh machine
 
 ```sh
-git clone <this repo> ~/hypr-new
-cd ~/hypr-new
+git clone https://github.com/anujsuthar08/hyprland-lua-rice.git ~/hyprland-lua-rice
+cd ~/hyprland-lua-rice
 ./install.sh            # DRY RUN: shows every package and link it would touch
 ./install.sh --apply    # installs packages/*.txt (pacman + yay/paru), then links ~/.config/{hypr,ags,rofi}
 ```
@@ -128,7 +129,7 @@ isn't symlinked from this repo, so nothing includes it automatically outside `in
 dotfiles setups, `git pull` already *is* the update. No separate upgrade script needed:
 
 ```sh
-cd ~/hypr-new && git pull
+cd ~/hyprland-lua-rice && git pull
 hyprctl reload                     # picks up .lua changes (usually automatic on save anyway)
 systemctl --user restart hypr-shell  # picks up .tsx/.scss changes — AGS does not hot-reload
 ```

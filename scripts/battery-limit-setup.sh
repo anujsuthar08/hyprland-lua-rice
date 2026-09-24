@@ -16,7 +16,7 @@ set -euo pipefail
 RULE=/etc/udev/rules.d/60-battery-charge-limit.rules
 # no shell variables in the rule: udev would try to expand `$name` itself
 read -r -d '' CONTENT <<'RULE_EOF' || true
-# Written by hypr-new scripts/battery-limit-setup.sh
+# Written by hyprland-lua-rice scripts/battery-limit-setup.sh
 ACTION=="add|change", SUBSYSTEM=="power_supply", ATTR{type}=="Battery", RUN+="/bin/sh -c 'chgrp wheel /sys%p/charge_control_end_threshold && chmod g+w /sys%p/charge_control_end_threshold'"
 RULE_EOF
 
