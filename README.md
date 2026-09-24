@@ -76,6 +76,14 @@ optional); the AUR ones are the Astal shell libraries and a few tools. Fonts:
 Optional: `ollama` with at least one model (the **Ask** tab; nothing leaves the machine), `power-profiles-daemon` (power-profile switch), `tesseract tesseract-data-eng`
 (`SUPER+SHIFT+T`: copy text from a screen region; `SUPER+CTRL+T` translates it with your local model), `ydotool` (interaction tests only).
 
+**Other distros**: `install.sh` checks for `pacman` and refuses to run its package/AUR step
+if it's missing — this is an **Arch-only installer**. The shell itself depends on ~20 AUR
+git packages (`aylurs-gtk-shell-git`, `libastal*-git`) with no equivalent on other package
+managers. The underlying pieces (Hyprland, `hyprlock`/`hypridle`/`hyprsunset`, AGS/Astal,
+rofi, matugen) aren't inherently Arch-only upstream, so it's *possible* to install all of
+them yourself on another distro and then run `./deploy.sh` directly — it's pure symlinking,
+no `pacman` calls — but that path is unsupported and untested here.
+
 **GPU**: developed and tested on an AMD iGPU (Radeon 680M) — the Wayland session runs on
 `amdgpu` throughout. The dev laptop is a hybrid AMD/NVIDIA machine, but the NVIDIA GPU isn't
 active in this session (no `nvidia-smi`, no NVIDIA PCI device visible to the running kernel —
