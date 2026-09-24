@@ -1,4 +1,4 @@
-# hypr-new — Hyprland (Lua) desktop
+# hyprland-lua-rice — a Hyprland (Lua) desktop
 
 A from-scratch Hyprland desktop: compositor config in **Lua** (not the old
 hyprlang `.conf`), an [AGS](https://github.com/Aylur/ags) v3 / Astal shell
