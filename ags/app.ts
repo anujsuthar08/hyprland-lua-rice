@@ -29,7 +29,6 @@ import { compileBandwidthLoop } from "./widget/bar/bandwidth"
 import ClickHighlight from "./widget/ClickHighlight"
 import { fireClick, toggleHighlight } from "./widget/bar/clickHighlightState"
 import { toggleMeetingMode } from "./widget/bar/meetingModeState"
-import { Activity, ACTIVITIES, switchActivity, tagFocusedToCurrent, untagFocused } from "./widget/bar/activityState"
 
 // A handful of hand-picked, uniformly-weighted icons (see
 // widget/bar/icons.ts) live outside any installed icon theme, because
@@ -212,25 +211,6 @@ app.start({
       case "meeting-mode":
         toggleMeetingMode()
         return res("ok")
-
-      // `ags request activity <name>` — SUPER+P then 1/2/3/4 (see
-      // activityState.ts and the "project" submap in conf/binds.lua)
-      case "activity": {
-        const name = argv[1]
-        if (!ACTIVITIES.includes(name as Activity)) return res(`bad activity: ${name}`)
-        switchActivity(name as Activity).then((r) => res(r))
-        return
-      }
-
-      // `ags request activity-tag` — SUPER+P then T
-      case "activity-tag":
-        tagFocusedToCurrent().then((r) => res(r))
-        return
-
-      // `ags request activity-untag` — SUPER+P then U
-      case "activity-untag":
-        untagFocused().then((r) => res(r))
-        return
 
       default:
         return res(`unknown request: ${cmd}`)

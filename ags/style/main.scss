@@ -539,14 +539,6 @@ window.Bar {
 .glyph.timer .icon, .glyph.timer .timer-text { color: $primary; font-feature-settings: "tnum"; }
 .glyph.timer.rest .icon, .glyph.timer.rest .timer-text { color: $tertiary; }
 
-// Which activity is current, if any — a passive indicator, not a
-// button (switching happens from SUPER+P). No hover/press feedback,
-// so it never implies a click that does nothing.
-.glyph.activity {
-  .icon, .value { color: $secondary; }
-  &:hover, &:active { background-color: transparent; box-shadow: none; }
-}
-
 // Recording: a red dot + running clock, only while recording.
 .glyph.rec {
   .rec-dot {

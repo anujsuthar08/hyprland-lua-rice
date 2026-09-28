@@ -361,15 +361,9 @@ local workshops = {
 -- [program-to-run ...]`), and -e is an undocumented compat alias.
 local picker = "$HOME/.local/bin/claude-workspace"
 
--- `--class workshop-<name>` marks the terminal so
--- ags/widget/bar/activityState.ts can tell which workshop a freshly
--- opened window belongs to and auto-tag it — see that file for the
--- "activities" feature (KDE-Activities-style window hide/show,
--- 2026-09-23). kitty takes its own options before the trailing
--- program+args, same as the existing --directory flag.
 local function open_workshop(name)
   local dir = "$HOME/work/" .. name
-  return apps.terminal .. " --class workshop-" .. name .. " --directory " .. dir .. " " .. picker .. " " .. dir
+  return apps.terminal .. " --directory " .. dir .. " " .. picker .. " " .. dir
 end
 
 bind(M .. "+P", "Modes: Project picker (then w / h / r / s)", hl.dsp.submap("project"))
@@ -381,30 +375,6 @@ hl.define_submap("project", function()
       hl.dispatch(hl.dsp.submap("reset"))
     end)
   end
-
-  -- Activities: switch which workshop's windows are visible WITHOUT
-  -- opening a new terminal (opening one via w/h/r/s above already
-  -- switches, as a side effect of the new window auto-tagging itself).
-  -- Digits are free inside this submap — SUPER+1..9 is a different
-  -- context entirely. T/U hand-tag or release the FOCUSED window, for
-  -- anything not spawned from the picker (a browser tab, etc.) that
-  -- should still hide/show with the rest. All state and the actual
-  -- window move/hide logic live in activityState.ts; these binds just
-  -- forward to it, same pattern as meeting mode.
-  for i, ws in ipairs(workshops) do
-    bind(tostring(i), "Activity: Switch to " .. ws.name .. " (no new terminal)", function()
-      hl.exec_cmd("ags request -i shell activity " .. ws.name)
-      hl.dispatch(hl.dsp.submap("reset"))
-    end)
-  end
-  bind("T", "Activity: Tag focused window to current activity", function()
-    hl.exec_cmd("ags request -i shell activity-tag")
-    hl.dispatch(hl.dsp.submap("reset"))
-  end)
-  bind("U", "Activity: Release focused window (visible in every activity)", function()
-    hl.exec_cmd("ags request -i shell activity-untag")
-    hl.dispatch(hl.dsp.submap("reset"))
-  end)
 
   bind("ESCAPE",   "Cancel", hl.dsp.submap("reset"))
   bind("Return",   "Cancel", hl.dsp.submap("reset"))

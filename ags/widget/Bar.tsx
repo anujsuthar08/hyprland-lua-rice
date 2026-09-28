@@ -24,7 +24,6 @@ import Mic from "./bar/Mic"
 import Recording from "./bar/Recording"
 import Nightlight from "./bar/Nightlight"
 import Caffeine from "./bar/Caffeine"
-import Activity from "./bar/Activity"
 import Timer from "./bar/Timer"
 import WeatherMenu from "./bar/WeatherMenu"
 import SystemMenu from "./bar/SystemMenu"
@@ -245,7 +244,6 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
             <box $type="end" class="cluster" spacing={2}>
               <Recording />
               <Timer />
-              <Activity />
               <Caffeine />
               <Nightlight />
               <SystemMenu reveal={expanded} />

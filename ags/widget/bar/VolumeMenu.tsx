@@ -129,8 +129,8 @@ export default function VolumeMenu(props: { reveal: Accessor<boolean> }) {
       reveal={props.reveal}
       tooltip="Scroll to adjust · right-click to mute · click for outputs"
       setup={(self) => {
-        // Scroll-over-volume, which the pre-rebuild archeclipse bar had
-        // and the 2026-09-01 rebuild dropped. 2% a notch: fine enough
+        // Scroll-over-volume, which the old bar (pre 2026-09-01 rebuild)
+        // had and the rebuild dropped. 2% a notch: fine enough
         // to land on a value, coarse enough to cross the range.
         const scroll = new Gtk.EventControllerScroll(
           { flags: Gtk.EventControllerScrollFlags.VERTICAL },

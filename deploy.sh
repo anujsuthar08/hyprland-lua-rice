@@ -13,8 +13,8 @@
 #   ~/.config/ags   -> <this repo>/ags
 #   ~/.config/rofi  -> <this repo>/rofi
 #
-# ⚠️ ~/.config/hypr currently holds the live archeclipse setup. It is
-#    MOVED to a timestamped backup, never deleted.
+# ⚠️ ~/.config/hypr currently holds whatever rice you're already running.
+#    It is MOVED to a timestamped backup, never deleted.
 #
 set -euo pipefail
 
